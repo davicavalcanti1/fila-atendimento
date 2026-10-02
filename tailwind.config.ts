@@ -15,4 +15,14 @@ export default {
     "./index.html",
     "./src/**/*.{ts,tsx}",
   ],
+  theme: {
+    extend: {
+      fontFamily: {
+        /* Como no Farol: a fila é hora, espera e contagem em coluna, então
+           font-mono aponta para uma face de verdade (JetBrains Mono, em
+           --font-mono no src/index.css), e não para o monospace do sistema. */
+        mono: ["var(--font-mono)"],
+      },
+    },
+  },
 } satisfies Config;

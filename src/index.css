@@ -1,14 +1,17 @@
-/* Fila de Atendimento — folha de entrada.
+/* Farol — folha de entrada.
    O design vem do núcleo compartilhado em src/design/ (arquivos gerados,
    não edite lá). Este arquivo só carrega o núcleo e guarda o que for
    exclusivo deste app.
 
-   Para mudar token, raio, sombra ou cor: mexa em
+   Para mudar token, raio, sombra ou cor NO NÚCLEO: mexa em
    imago-platform/packages/design/src/core.css e rode
-   `node packages/design/sync.mjs`. Mudar aqui faz o app divergir dos outros
-   cinco, que foi o problema que o núcleo veio resolver. */
+   `node packages/design/sync.mjs`.
 
-@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap');
+   ATENÇÃO: a partir de 21/09/2026 este app DIVERGE do núcleo de propósito —
+   ver o bloco "Sala de comando" abaixo. A divergência mora aqui, e só aqui,
+   justamente para sobreviver ao próximo sync.mjs. */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import './design/core.css';
 @import './design/compat-dark.css';
 
@@ -16,5 +19,349 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Local: Fila de Atendimento ─────────────────────────────────────────────────────────
-   Nada específico até aqui. O que for exclusivo deste app entra abaixo. */
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOCAL: FILA — identidade "sala de comando", em claro (cópia do Farol)
+   ---------------------------------------------------------------------------
+   O núcleo Imago atende seis produtos, a maioria de formulário e relatório. O
+   Farol não é nenhum dos dois: é um painel de operação lido de pé, a três
+   metros, por quem está atendendo outra pessoa ao mesmo tempo. Daí uma
+   identidade própria — mas clara, porque a recepção trabalha com luz acesa e
+   janela aberta, e tela escura num ambiente claro vira espelho.
+
+   A regra do núcleo continua valendo e é levada ao extremo:
+
+       O CHROME É NEUTRO. A COR É SEMPRE INFORMAÇÃO.
+
+   O que muda em relação ao núcleo, e por quê:
+
+     canvas        → cinza-azulado um degrau mais escuro (95% contra 97%), para
+                     o card branco puro SALTAR dele sem precisar de sombra.
+                     Painel é feito de placas, e placa tem aresta.
+     tinta         → quase preta (8% contra 10%) e borda visível: contraste de
+                     instrumento, não de app de leitura.
+     ação          → ciano 199 em vez do azul 220 da marca. Longe o bastante de
+                     verde(150)/âmbar(38)/vermelho(358) para nunca ser lido como
+                     status, e é o matiz do feixe.
+     status        → os `-text` medidos contra o canvas: 5.0:1 a 6.2:1. O
+                     âmbar é o caso perigoso (#f9a006 com branco por cima dá
+                     2.1:1 e reprova), por isso o `-text` dele é um ocre
+                     escuro, não o âmbar da superfície.
+     raio          → 2–4px. Instrumento não arredonda para parecer amigável.
+     fonte         → Inter para texto e JetBrains Mono para TODO número.
+                     A Inter não tem personalidade, e aqui isso é a qualidade
+                     que se quer: ela some e deixa o dado falar. A primeira
+                     tentativa foi Archivo, uma grotesca industrial — tinha
+                     mais caráter e foi recusada justamente por isso, numa tela
+                     que é lida de relance o tempo todo.
+                     A mono não é enfeite: este produto é hora, contagem e
+                     espera em coluna, e numeral proporcional desalinha coluna
+                     — coluna desalinhada em recepção vira leitura errada.
+
+   Para voltar ao visual do núcleo: apague deste comentário até o fim do
+   arquivo e devolva o @import da Public Sans lá em cima.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    /* ── Neutros — rampa de console, matiz 214 ───────────────────────────
+       O canvas tem tint e a superfície é branco puro. É o que separa card de
+       fundo sem borda pesada — a folha sobre a mesa de luz. */
+    --background:        214 20% 95%;
+    --foreground:        214 45%  8%;   /* 16.6:1 no canvas */
+
+    --card:              0 0% 100%;
+    --card-foreground:   214 45%  8%;
+
+    --popover:           0 0% 100%;
+    --popover-foreground:214 45%  8%;
+
+    --secondary:         214 18% 90%;
+    --secondary-foreground: 214 25% 22%;
+
+    --muted:             214 18% 92%;
+    --muted-foreground:  214 12% 40%;   /* 5.4:1 no canvas */
+
+    /* ── Ação — ciano de sinal ───────────────────────────────────────────
+       Onde ele aparece, algo acontece ao clicar. Não decora, não é status. */
+    --primary:           199 95% 32%;   /* 5.0:1 como texto, 5.6:1 com branco por cima */
+    --primary-foreground:0 0% 100%;
+    --primary-hover:     199 95% 25%;
+
+    --accent:            199 70% 93%;
+    --accent-foreground: 199 95% 26%;
+
+    /* ── Status — a luz do farol ─────────────────────────────────────────
+       Três papéis por cor, e confundi-los foi o bug mais comum do núcleo:
+         --x              superfície preenchida (badge sólido)
+         --x-foreground   o texto POR CIMA dessa superfície
+         --x-text         a MESMA cor como texto sobre o fundo da página */
+    --destructive:       358 70% 46%;   /* branco por cima: 5.7:1 */
+    --destructive-foreground: 0 0% 100%;
+    --destructive-text:  358 72% 40%;   /* 6.2:1 no canvas */
+
+    --success:           150 72% 29%;
+    --success-foreground:0 0% 100%;
+    --success-text:      150 75% 26%;   /* 5.2:1 no canvas */
+
+    --warning:            38 95% 50%;   /* âmbar fica âmbar; quem muda é o texto */
+    --warning-foreground: 38 100% 12%;
+    --warning-text:       32 90% 32%;   /* 5.0:1 — ocre, não âmbar */
+
+    --info:              199 95% 32%;
+    --info-foreground:   0 0% 100%;
+    --info-text:         199 95% 28%;   /* 6.1:1 no canvas */
+
+    /* ── Modalidade ──────────────────────────────────────────────────────
+       Os valores do núcleo, intactos: já eram calibrados para fundo claro, e
+       são o laço com os outros apps — RM é violeta aqui, no totem e na TV.
+
+       ── O limite desta rampa, medido ────────────────────────────────────
+       Rodei as oito num validador de paleta categórica (as 28 combinações,
+       visão normal e as três dicromacias). O melhor resultado alcançável com
+       estes oito matizes fica abaixo do piso de separação — e para chegar
+       perto disso o otimizador precisa enlamear as cores a ponto de DO virar
+       marrom e ECO virar verde neón. Não é falta de ajuste: oito matizes
+       categóricos não se separam, e o próprio core.css já dizia isso ("o
+       limite de cor categórica fica em 7–8").
+
+       A consequência prática, que vale como regra: COR DE MODALIDADE NUNCA
+       VAI SOZINHA. No chip ela vem com o código (RM, TC, US…), no rail vem
+       com o nome do farol ao lado, e em gráfico vem com legenda ou rótulo
+       direto. Quem confiar só no matiz para separar TC de RM vai errar — e
+       não é só quem tem daltonismo. */
+    --modality-do:        25 78% 36%;
+    --modality-rx:        60 70% 32%;
+    --modality-nc:        95 45% 34%;
+    --modality-eco:      130 40% 34%;
+    --modality-us:       165 65% 30%;
+    --modality-tc:       250 60% 50%;
+    --modality-rm:       285 55% 46%;
+    --modality-mg:       320 62% 45%;
+    --modality-none:     214  8% 42%;
+    --modality-foreground: 0 0% 100%;
+
+    --occurrence-administrativa: 285 55% 48%;
+    --occurrence-revisao_exame:  199 95% 32%;
+    --occurrence-enfermagem:     168 65% 30%;
+
+    /* ── Contornos ───────────────────────────────────────────────────────
+       --border é divisória (isenta de contraste mínimo) e aqui ela é mais
+       escura que a do núcleo de propósito: no console a placa tem aresta.
+       --input é contorno de controle e precisa de 3:1 (WCAG 1.4.11) — mede
+       4.5:1, e não é engano ser tão mais escuro que a divisória. */
+    --border:            214 16% 85%;
+    --input:             214 12% 48%;
+    --ring:              199 95% 32%;
+
+    /* ── Tipografia ──────────────────────────────────────────────────────
+       --font-mono é token novo: o núcleo não tinha, porque nenhum dos outros
+       apps é feito de mostrador. O mapeamento pro utilitário `font-mono`
+       está em tailwind.config.ts. */
+    --font-sans:  'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono:  'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    --font-serif: 'Literata', Georgia, 'Times New Roman', serif;
+
+    /* ── Raios — instrumento ─────────────────────────────────────────────
+       Metade do núcleo. Painel de operação é retangular; o canto arredondado
+       aqui serve só para não cortar. */
+    --radius:      0.125rem;   /* 2px */
+    --radius-xl:   0.1875rem;  /* 3px */
+    --radius-2xl:  0.25rem;    /* 4px */
+
+    /* ── Sombras ─────────────────────────────────────────────────────────
+       O card se define por um anel de 1px, não por profundidade. A elevação
+       entra só no hover, onde ela informa que o elemento responde. */
+    --shadow-sm:         0 1px 2px 0 rgb(12 20 32 / 0.06);
+    --shadow-md:         0 4px 6px -1px rgb(12 20 32 / 0.10), 0 2px 4px -2px rgb(12 20 32 / 0.08);
+    --shadow-lg:         0 10px 15px -3px rgb(12 20 32 / 0.10), 0 4px 6px -4px rgb(12 20 32 / 0.08);
+    --shadow-card:       0 0 0 1px rgb(12 20 32 / 0.08), 0 1px 3px 0 rgb(12 20 32 / 0.07);
+    --shadow-card-hover: 0 0 0 1px hsl(199 95% 32% / 0.35), 0 8px 20px -6px rgb(12 20 32 / 0.16);
+    --shadow-primary:    0 8px 24px -8px hsl(199 95% 32% / 0.35);
+
+/* ── Prioridade — exclusivo da Fila ──────────────────────────────────
+       Uma cor por tipo de prioridade, para a recepção ler de relance quem
+       passa na frente e por quê. Os matizes fogem dos que já têm dono nesta
+       tela: verde/âmbar/vermelho são o LED de espera e o ciano 199 é ação.
+       Todos aguentam texto branco por cima (≥4.5:1) e a cor NUNCA vai
+       sozinha — o card sempre traz o nome da prioridade escrito. */
+    --prio-idoso:    268 55% 48%;   /* violeta */
+    --prio-pcd:      222 72% 46%;   /* azul */
+    --prio-gestante: 328 64% 45%;   /* magenta */
+    --prio-autista:  176 72% 28%;   /* petróleo */
+    --prio-crianca:   18 82% 42%;   /* ferrugem — "Prioritário" */
+
+    --sidebar-background: 214 45% 12%;
+    --sidebar-foreground: 214 20% 88%;
+    --sidebar-primary: 199 95% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 45%  9%;
+    --sidebar-accent-foreground: 214 20% 88%;
+    --sidebar-border: 214 40% 18%;
+    --sidebar-ring: 199 95% 45%;
+  }
+
+  /* O canvas ganha uma grade fraquíssima, como papel milimetrado sob vidro.
+     Fixa em relação à viewport: rolar a fila não arrasta a grade junto, então
+     ela lê como superfície do painel e não como conteúdo. */
+  body {
+    background-color: hsl(var(--background));
+    background-image:
+      linear-gradient(hsl(var(--foreground) / 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.035) 1px, transparent 1px);
+    background-size: 48px 48px, 48px 48px;
+    background-attachment: fixed;
+  }
+
+  /* Todo número deste produto é coluna. Ver o bloco de tipografia acima. */
+  .font-mono, code, kbd, samp, pre {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+@layer components {
+  /* ── Painel ────────────────────────────────────────────────────────────
+     A superfície padrão do console. Substitui o par `bg-card + border +
+     shadow-card` espalhado pelas telas. */
+  .panel {
+    background-color: hsl(var(--card));
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-card);
+  }
+  .panel-hover {
+    transition: box-shadow 180ms ease, transform 180ms ease;
+  }
+  .panel-hover:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* ── Lâmpada ───────────────────────────────────────────────────────────
+     O LED. `--lamp` é a cor; o resto é derivado dela, então trocar de status
+     é trocar uma variável e nada mais.
+
+     Sobre fundo claro um halo puro some — o que faz a bolinha ler como
+     ACESA aqui é o contrário do escuro: um anel da própria cor, diluído,
+     em volta de um miolo saturado. O brilho continua sendo box-shadow e não
+     filter: blur, porque filter cria camada de composição por elemento e a
+     fila chega a ter 40 deles numa tela só. */
+  .lamp {
+    --lamp: hsl(var(--muted-foreground));
+    position: relative;
+    display: inline-block;
+    border-radius: 9999px;
+    background: var(--lamp);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--lamp) 22%, transparent),
+      0 1px 2px 0 rgb(12 20 32 / 0.25);
+  }
+  .lamp-ok   { --lamp: hsl(var(--success)); }
+  .lamp-warn { --lamp: hsl(var(--warning)); }
+  .lamp-crit { --lamp: hsl(var(--destructive)); }
+
+  /* O crítico respira. Só ele: se tudo pisca, nada pisca. O ritmo é lento
+     (2.4s) porque esta tela fica ligada o dia inteiro no campo de visão de
+     quem trabalha na recepção. */
+  .lamp-crit { animation: lamp-breathe 2.4s ease-in-out infinite; }
+
+  /* ── Mostrador ─────────────────────────────────────────────────────────
+     O número grande do card: mono, tabular, apertado. É a coisa que se lê de
+     três metros, antes de qualquer rótulo. */
+  .readout {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+  }
+
+  /* ── Etiqueta de console ───────────────────────────────────────────────
+     Rótulo minúsculo em caixa alta muito espaçada. É o que nomeia cada
+     mostrador sem competir com o número. */
+  .console-label {
+    font-size: 0.5625rem;      /* 9px */
+    line-height: 1;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* ── Espectro de espera ────────────────────────────────────────────────
+     A barra segmentada do card do Hub: um bloco por paciente, colorido pela
+     espera dele. Responde de relance "quantos estão no vermelho", que é
+     pergunta diferente de "quantos estão na fila". */
+  .spectrum {
+    display: flex;
+    gap: 2px;
+    height: 0.375rem;
+  }
+  .spectrum > i {
+    flex: 1 1 0;
+    border-radius: 1px;
+    background: hsl(var(--border));
+  }
+  .spectrum > i[data-led="ok"]   { background: hsl(var(--success)); }
+  .spectrum > i[data-led="warn"] { background: hsl(var(--warning)); }
+  .spectrum > i[data-led="crit"] { background: hsl(var(--destructive)); }
+}
+
+@layer components {
+  /* ── Prioridade ────────────────────────────────────────────────────────
+     `.prio-<tipo>` só define --prio; o resto deriva dela. As classes são
+     escritas por extenso em lib/prioridade.ts — montadas por template, o
+     Tailwind as tiraria do CSS. */
+  .prio-idoso    { --prio: var(--prio-idoso); }
+  .prio-pcd      { --prio: var(--prio-pcd); }
+  .prio-gestante { --prio: var(--prio-gestante); }
+  .prio-autista  { --prio: var(--prio-autista); }
+  .prio-crianca  { --prio: var(--prio-crianca); }
+
+  /* Card tingido: fundo da cor bem diluído, aresta da cor, e a barra cheia
+     na borda esquerda. Diluído de propósito — três idosos seguidos não podem
+     virar uma parede violeta que esconde o resto da fila. */
+  .prio-card {
+    background-color: hsl(var(--prio) / 0.07) !important;
+    box-shadow: 0 0 0 1px hsl(var(--prio) / 0.45) !important;
+  }
+  .prio-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    border-radius: 2px 0 0 2px;
+    background-color: hsl(var(--prio));
+  }
+  .prio-chip {
+    background-color: hsl(var(--prio));
+    color: #fff;
+    border-color: hsl(var(--prio));
+  }
+  .prio-texto { color: hsl(var(--prio)); }
+
+  /* ── Zona de soltar ────────────────────────────────────────────────────
+     Onde o card cai durante o arrasto. Tracejado em ciano: é ação, não
+     status — o mesmo matiz de tudo que responde a clique. */
+  .drop-ativo {
+    background-color: hsl(var(--primary) / 0.05);
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.35);
+  }
+}
+
+@layer utilities {
+  /* Número em coluna — pode ser aplicado a qualquer elemento. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+@keyframes lamp-breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+/* Movimento é informação aqui (o crítico respira),
+   mas não ao ponto de passar por cima de quem pediu para parar. */
+@media (prefers-reduced-motion: reduce) {
+  .lamp-crit { animation: none; }
+}

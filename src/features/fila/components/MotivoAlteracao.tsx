@@ -32,10 +32,10 @@ export function CamposDeMotivo({ motivo, setMotivo, detalhe, setDetalhe, disable
   return (
     <div className="space-y-3">
       <div>
-        <label className="text-xs font-semibold text-foreground mb-1.5 block">
-          Motivo da alteração <span className="text-rose-600">*</span>
+        <label className="console-label !text-foreground/80 mb-2 block">
+          Motivo da alteração <span className="text-destructive-strong">*</span>
         </label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {Object.entries(MOTIVO_OPTIONS).map(([key, opt]) => {
             const active = motivo === key;
             return (
@@ -45,10 +45,11 @@ export function CamposDeMotivo({ motivo, setMotivo, detalhe, setDetalhe, disable
                 title={opt.descricao}
                 disabled={disabled}
                 onClick={() => setMotivo(key)}
-                className={`text-xs px-2.5 py-1.5 rounded-full border transition ${
+                aria-pressed={active}
+                className={`inline-flex items-center h-7 px-2.5 rounded-sm border text-xs font-medium transition-colors ${
                   active
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-card text-foreground border-border hover:border-primary"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card text-foreground border-border hover:border-primary/50 hover:text-primary"
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {opt.label}
@@ -65,8 +66,8 @@ export function CamposDeMotivo({ motivo, setMotivo, detalhe, setDetalhe, disable
 
       {motivo === MOTIVO_EXIGE_DETALHE && (
         <div>
-          <label className="text-xs font-semibold text-foreground mb-1.5 block">
-            Descreva o motivo <span className="text-rose-600">*</span>
+          <label className="console-label !text-foreground/80 mb-2 block">
+            Descreva o motivo <span className="text-destructive-strong">*</span>
           </label>
           <textarea
             value={detalhe}
@@ -74,7 +75,7 @@ export function CamposDeMotivo({ motivo, setMotivo, detalhe, setDetalhe, disable
             disabled={disabled}
             rows={2}
             placeholder="Em uma frase, o que motivou esta alteração"
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
+            className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring disabled:opacity-50"
           />
         </div>
       )}
@@ -114,7 +115,7 @@ export function DialogMotivoAlteracao({
         </DialogHeader>
 
         {alteracao && (
-          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground flex items-start gap-2">
+          <div className="rounded-sm border border-border border-l-[3px] border-l-primary bg-muted/40 px-3 py-2.5 text-sm text-foreground flex items-start gap-2">
             <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
             <span>{alteracao.resumo}</span>
           </div>
