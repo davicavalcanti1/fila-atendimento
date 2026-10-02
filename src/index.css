@@ -178,6 +178,18 @@
     --shadow-card-hover: 0 0 0 1px hsl(199 95% 32% / 0.35), 0 8px 20px -6px rgb(12 20 32 / 0.16);
     --shadow-primary:    0 8px 24px -8px hsl(199 95% 32% / 0.35);
 
+/* ── Prioridade — exclusivo da Fila ──────────────────────────────────
+       Uma cor por tipo de prioridade, para a recepção ler de relance quem
+       passa na frente e por quê. Os matizes fogem dos que já têm dono nesta
+       tela: verde/âmbar/vermelho são o LED de espera e o ciano 199 é ação.
+       Todos aguentam texto branco por cima (≥4.5:1) e a cor NUNCA vai
+       sozinha — o card sempre traz o nome da prioridade escrito. */
+    --prio-idoso:    268 55% 48%;   /* violeta */
+    --prio-pcd:      222 72% 46%;   /* azul */
+    --prio-gestante: 328 64% 45%;   /* magenta */
+    --prio-autista:  176 72% 28%;   /* petróleo */
+    --prio-crianca:   18 82% 42%;   /* ferrugem — "Prioritário" */
+
     --sidebar-background: 214 45% 12%;
     --sidebar-foreground: 214 20% 88%;
     --sidebar-primary: 199 95% 45%;
@@ -294,6 +306,38 @@
 }
 
 @layer components {
+  /* ── Prioridade ────────────────────────────────────────────────────────
+     `.prio-<tipo>` só define --prio; o resto deriva dela. As classes são
+     escritas por extenso em lib/prioridade.ts — montadas por template, o
+     Tailwind as tiraria do CSS. */
+  .prio-idoso    { --prio: var(--prio-idoso); }
+  .prio-pcd      { --prio: var(--prio-pcd); }
+  .prio-gestante { --prio: var(--prio-gestante); }
+  .prio-autista  { --prio: var(--prio-autista); }
+  .prio-crianca  { --prio: var(--prio-crianca); }
+
+  /* Card tingido: fundo da cor bem diluído, aresta da cor, e a barra cheia
+     na borda esquerda. Diluído de propósito — três idosos seguidos não podem
+     virar uma parede violeta que esconde o resto da fila. */
+  .prio-card {
+    background-color: hsl(var(--prio) / 0.07) !important;
+    box-shadow: 0 0 0 1px hsl(var(--prio) / 0.45) !important;
+  }
+  .prio-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    border-radius: 2px 0 0 2px;
+    background-color: hsl(var(--prio));
+  }
+  .prio-chip {
+    background-color: hsl(var(--prio));
+    color: #fff;
+    border-color: hsl(var(--prio));
+  }
+  .prio-texto { color: hsl(var(--prio)); }
+
   /* ── Zona de soltar ────────────────────────────────────────────────────
      Onde o card cai durante o arrasto. Tracejado em ciano: é ação, não
      status — o mesmo matiz de tudo que responde a clique. */

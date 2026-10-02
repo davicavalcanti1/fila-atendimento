@@ -24,6 +24,7 @@ import {
 } from "../hooks/useFilaAssistente";
 import { useEffect, useState } from "react";
 import { DialogMotivoAlteracao, CamposDeMotivo, motivoCompleto } from "../components/MotivoAlteracao";
+import { classePrioridade } from "../lib/prioridade";
 
 export default function FilaAtendimentoAssistente() {
   const { profile, role } = useAuth();
@@ -184,19 +185,20 @@ export default function FilaAtendimentoAssistente() {
   const isSupervisorMode = !readOnly && (role === "supervisor" || role === "admin" || role === "developer");
 
   // ── Card do paciente ────────────────────────────────────────────────────────
-  // Mesma regra do Farol: o chrome é neutro e a cor é sempre informação. O card
-  // é branco; o que acende nele é o LED de espera (verde/âmbar/vermelho pelos
-  // mesmos cortes do Farol) e a marca de prioridade, que é a única coisa que
-  // muda a moldura — uma barra vermelha na aresta esquerda, e não o card
-  // inteiro pintado, que fazia a coluna virar uma parede vermelha quando havia
-  // três idosos seguidos.
-  function cardClasses(isDragging: boolean, isPriority: boolean, isAgendado: boolean) {
+  // Mesma regra do Farol: o chrome é neutro e a cor é sempre informação. Aqui
+  // a informação que pinta o card é a PRIORIDADE — cada tipo tem a sua cor
+  // (idoso, PCD, gestante, autista, prioritário; tokens --prio-* em
+  // index.css), em fundo diluído com a barra cheia na aresta e o nome escrito
+  // no card. Paciente normal fica branco. O tempo de espera é o único outro
+  // sinal, e fica restrito ao LED pequeno no canto.
+  function cardClasses(isDragging: boolean, prioridade: string, isAgendado: boolean) {
+    const prioClasse = classePrioridade(prioridade);
     return cn(
       "relative shrink-0 rounded-sm bg-card pl-3 pr-2 py-2 text-sm cursor-pointer transition-shadow",
       "shadow-[0_0_0_1px_rgb(12_20_32/0.08)] hover:shadow-card-hover",
-      isDragging && "shadow-lg ring-1 ring-primary",
       isAgendado && !isDragging && "bg-card/60",
-      isPriority && "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-l-sm before:bg-destructive",
+      prioClasse && `${prioClasse} prio-card`,
+      isDragging && "shadow-lg ring-1 ring-primary",
     );
   }
 
@@ -256,7 +258,9 @@ export default function FilaAtendimentoAssistente() {
 
         <div className="flex items-center gap-2 mt-1 pl-[3.25rem] text-[11px] text-muted-foreground">
           {isPriority && (
-            <span className="console-label !text-destructive-strong">{prio.label}</span>
+            <span className="inline-flex items-center h-4 px-1.5 rounded-sm prio-chip text-[9px] font-bold uppercase tracking-[0.14em]">
+              {prio.label}
+            </span>
           )}
           {g.hasAnyOverride && (
             <span className="inline-flex items-center gap-1 console-label !text-primary" title="Transferido de médico">
@@ -287,7 +291,6 @@ export default function FilaAtendimentoAssistente() {
   }
 
   function renderGroupCard(g: GroupedCard, index: number, isAgendado: boolean) {
-    const isPriority = g.prioridadeMax !== "normal";
     return (
       <Draggable
         key={g.groupId}
@@ -304,7 +307,7 @@ export default function FilaAtendimentoAssistente() {
               if ((e.target as HTMLElement).closest("button")) return;
               setDetalhesGroup(g);
             }}
-            className={cardClasses(snap.isDragging, isPriority, isAgendado)}
+            className={cardClasses(snap.isDragging, g.prioridadeMax, isAgendado)}
           >
             {cardInner(g, isAgendado)}
           </div>
@@ -680,6 +683,7 @@ export default function FilaAtendimentoAssistente() {
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(PRIORIDADE_OPTIONS).map(([key, opt]) => {
                   const active = editPrioridade === key;
+                  const prioClasse = classePrioridade(key);
                   return (
                     <button
                       key={key}
@@ -687,12 +691,18 @@ export default function FilaAtendimentoAssistente() {
                       aria-pressed={active}
                       onClick={() => setEditPrioridade(key)}
                       className={cn(
-                        "inline-flex items-center h-7 px-2.5 rounded-sm border text-xs font-medium transition-colors",
+                        "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-sm border text-xs font-medium transition-colors",
+                        prioClasse,
                         active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card text-foreground border-border hover:border-primary/50 hover:text-primary",
+                          ? (prioClasse ? "prio-chip" : "bg-foreground text-background border-foreground")
+                          : "bg-card text-foreground border-border hover:border-foreground/40",
                       )}
                     >
+                      {/* A amostra da cor aparece mesmo desmarcado: a escolha
+                          é também a escolha de como o card vai ficar. */}
+                      {prioClasse && !active && (
+                        <span className="h-2 w-2 rounded-[1px]" style={{ backgroundColor: "hsl(var(--prio))" }} />
+                      )}
                       {opt.label}
                     </button>
                   );

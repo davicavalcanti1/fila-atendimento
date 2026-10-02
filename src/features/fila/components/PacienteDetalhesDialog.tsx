@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInYears, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { classePrioridade } from "../lib/prioridade";
 import {
   User, Phone, CalendarDays, Stethoscope, FileText, Clock, ArrowRightLeft, CreditCard, ListChecks,
 } from "lucide-react";
@@ -118,7 +119,7 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
             <User className="h-5 w-5 text-muted-foreground" />
             <span className="text-lg">{principal.nome_paciente}</span>
             {algumaPrio && (
-              <Badge className="ml-1 rounded-sm bg-destructive/10 text-destructive-strong border-destructive/30 uppercase tracking-wider text-[10px]">
+              <Badge className={`ml-1 rounded-sm prio-chip uppercase tracking-wider text-[10px] ${classePrioridade(algumaPrio.prioridade)}`}>
                 {PRIO_LABEL[algumaPrio.prioridade ?? "normal"]}
               </Badge>
             )}

@@ -71,11 +71,10 @@ export function fmtTempo(min: number) {
 }
 
 /**
- * A espera aqui conta da entrada na fila (`primeira_vez`), que é a MESMA conta
- * do card do paciente dentro da fila (`differenceInMinutes(now, chegouEmMin)`).
- * O Farol passou a contar "do mais tarde entre chegada e agendado" em 21/09;
- * trazer essa regra para cá é decisão de comportamento, não de visual, e se
- * vier tem que vir para os dois lugares desta tela de uma vez.
+ * O card do hub responde uma pergunta só: quantos estão na fila desta
+ * modalidade. Tempo de espera NÃO entra aqui de propósito — a Fila organiza a
+ * sequência dos pacientes, e o tempo só importa dentro dela, no card de cada
+ * um. Quem quer saber de atraso por modalidade olha o Farol.
  */
 function ModalidadeCard({
   slug, label, modalidadeIds, situacaoIds,
@@ -86,24 +85,17 @@ function ModalidadeCard({
   situacaoIds: readonly number[];
 }) {
   const navigate = useNavigate();
-  const [esperas, setEsperas] = useState<number[] | null>(null);
+  const [count, setCount] = useState<number | null>(null);
 
   const load = useCallback(() => {
     (supabase as any)
       .from("farol_timestamps")
-      .select("primeira_vez")
+      .select("atendimento_id", { count: "exact", head: true })
       .eq("data_ref", todayBRT())
       .in("modalidade_id", modalidadeIds)
       .in("situacao_id", situacaoIds)
       .is("dispensed_at", null)
-      .then(({ data }: { data: Array<{ primeira_vez: string }> | null }) => {
-        const agora = Date.now();
-        setEsperas(
-          (data ?? [])
-            .map(r => Math.max(0, Math.floor((agora - new Date(r.primeira_vez).getTime()) / 60_000)))
-            .sort((a, b) => b - a),
-        );
-      });
+      .then(({ count: c }: { count: number | null }) => setCount(c ?? 0));
   }, [modalidadeIds.join(","), situacaoIds.join(",")]);
 
   useEffect(() => {
@@ -112,10 +104,7 @@ function ModalidadeCard({
     return () => clearInterval(t);
   }, [load]);
 
-  const total = esperas?.length ?? 0;
-  const maior = esperas?.[0] ?? 0;
-  const vazio = esperas !== null && total === 0;
-  const estado = vazio ? "ok" : faixaDaEspera(maior);
+  const vazio = count === 0;
 
   return (
     <button
@@ -125,48 +114,20 @@ function ModalidadeCard({
         vazio && "opacity-70 hover:opacity-100",
       )}
     >
-      <div className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-3">
-        <div className="min-w-0 flex items-baseline gap-2">
-          <span className="font-mono text-sm font-bold tracking-[0.12em] text-foreground/90">
-            {CODIGO_FILA[slug] ?? slug.slice(0, 2).toUpperCase()}
-          </span>
-          <h3 className="text-[13px] font-semibold text-muted-foreground leading-tight truncate">{label}</h3>
-        </div>
-        {esperas !== null && (
-          <span
-            className={cn("lamp h-2.5 w-2.5 shrink-0 mt-1", LAMP[estado])}
-            title={vazio ? "Fila vazia" : `Maior espera: ${fmtTempo(maior)}`}
-          />
-        )}
+      <div className="flex items-baseline gap-2 px-4 pt-3.5">
+        <span className="font-mono text-sm font-bold tracking-[0.12em] text-foreground/90">
+          {CODIGO_FILA[slug] ?? slug.slice(0, 2).toUpperCase()}
+        </span>
+        <h3 className="text-[13px] font-semibold text-muted-foreground leading-tight truncate">{label}</h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 px-4 pb-3">
-        <div>
-          <p className="readout text-[2rem] md:text-[2.5rem] text-foreground">
-            {esperas === null ? "…" : total}
-          </p>
-          <p className="console-label mt-1">na fila</p>
-        </div>
-        <div>
-          <p className={cn(
-            "readout text-[2rem] md:text-[2.5rem]",
-            vazio || esperas === null ? "text-muted-foreground" :
-            maior >= 60 ? "text-destructive-strong" : maior >= 30 ? "text-warning-strong" : "text-foreground",
-          )}>
-            {esperas === null || vazio ? "—" : fmtTempo(maior)}
-          </p>
-          <p className="console-label mt-1">maior espera</p>
-        </div>
-      </div>
-
-      {/* Um bloco por paciente, colorido pela espera dele: "a fila está
-          inteira no vermelho ou é um caso só?", que os números não separam. */}
-      <div className="px-4 pb-3 min-h-[0.375rem]" title="Um bloco por paciente, colorido pelo tempo de espera">
-        {!vazio && esperas && (
-          <div className="spectrum">
-            {esperas.map((m, i) => <i key={i} data-led={faixaDaEspera(m)} />)}
-          </div>
-        )}
+      <div className="px-4 pt-3 pb-3.5">
+        <p className={cn("readout text-[2.5rem] md:text-[3rem]", vazio ? "text-muted-foreground" : "text-foreground")}>
+          {count === null ? "…" : count}
+        </p>
+        <p className="console-label mt-1.5">
+          {count === null ? "carregando" : count === 1 ? "paciente na fila" : "pacientes na fila"}
+        </p>
       </div>
 
       <div className="mt-auto border-t border-border/70 px-4 py-2 flex items-center justify-between bg-background/40">
