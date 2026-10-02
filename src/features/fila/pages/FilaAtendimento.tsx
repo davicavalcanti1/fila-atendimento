@@ -171,6 +171,31 @@ function FilaHub() {
   //
   // Antes era quem tinha salvo seleção em algum momento de hoje, e ninguém saía
   // da lista até meia-noite. O horário exibido agora é "online desde".
+  // Médicos de cada pessoa hoje, da tabela protegida pela RLS da coordenação
+  // (a presença não carrega médicos — ver usePresencaFila). Soma por pessoa:
+  // quem trabalha Ultrassom e Ecocardiograma tem uma linha em cada.
+  const [medicosPorPessoa, setMedicosPorPessoa] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    if (!tenantId || !(role === "supervisor" || role === "admin" || role === "developer")) return;
+    let vivo = true;
+    const ler = async () => {
+      const { data } = await (supabase as any)
+        .from("fila_assistente_state")
+        .select("user_id, medicos_selecionados")
+        .eq("tenant_id", tenantId)
+        .gte("updated_at", `${hojeBRT()}T03:00:00.000Z`);
+      if (!vivo) return;
+      const m = new Map<string, number>();
+      for (const st of (data as Array<{ user_id: string; medicos_selecionados: string[] }> | null) ?? []) {
+        m.set(st.user_id, (m.get(st.user_id) ?? 0) + (st.medicos_selecionados?.length ?? 0));
+      }
+      setMedicosPorPessoa(m);
+    };
+    ler();
+    const t = setInterval(ler, 60_000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [tenantId, role, tick]);
+
   const { online } = usePresencaFila({
     tenantId,
     eu: profile?.id ? { id: profile.id, nome: profile.full_name || "Sem nome", papel: role ?? null } : null,
@@ -185,11 +210,11 @@ function FilaHub() {
             id:            p.id,
             full_name:     p.nome,
             email:         null as string | null,
-            medicos_count: p.medicos.length,
+            medicos_count: medicosPorPessoa.get(p.id) ?? 0,
             updated_at:    p.desde,
           }))
       : [],
-    [online, canSeeAssistentes],
+    [online, canSeeAssistentes, medicosPorPessoa],
   );
 
   useEffect(() => { loadTotal(); }, [loadTotal, tick]);

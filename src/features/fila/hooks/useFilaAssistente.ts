@@ -135,6 +135,7 @@ const SIT_AGENDADOS: readonly number[] = [
 ];
 
 const DEFAULT_SLUG = "ultrassom";
+const POR_MEDICO_SLUGS = new Set(["ultrassom", "ecocardiograma"]);
 
 const EMPTY_STATE: AssistenteState = {
   medicos_selecionados: [],
@@ -292,6 +293,16 @@ export interface ViewerDaFila {
   nome:     string;
   medicos:  string[];
   souEu:    boolean;
+  /**
+   * Quando esta pessoa mexeu na seleção pela última vez (Caio, 10/09/2026).
+   *
+   * Não é presença: ninguém escreve aqui por estar com a tela aberta, só por
+   * clicar num médico. Uma escolha feita às 7h continua valendo às 15h com a
+   * pessoa em casa — por isso o horário aparece ao lado.
+   */
+  marcadoEm: Date;
+  /** Está com a fila aberta agora — presença real do Realtime (02/10/2026). */
+  online:    boolean;
 }
 
 /** Alteração aguardando motivo antes de ir para o banco. */
@@ -327,6 +338,22 @@ export function useFilaAssistente({
   const tenantId   = user?.tenant_id ?? "";
   const myUserId   = user?.id ?? "";
 
+  /**
+   * Quem enxerga a divisão de médicos das OUTRAS pessoas.
+   *
+   * Decisão do Caio em 11/09/2026: é informação de coordenação, e coordenação é
+   * admin, developer e supervisor. A assistente continua vendo e gravando a
+   * própria seleção — o que ela perde é a lista das colegas.
+   *
+   * 🚨 Isto é conforto de tela, NÃO é a tranca. A tranca é a RLS de
+   * `fila_assistente_state` (migration 20260911180000), que devolve zero linhas
+   * das outras pessoas para quem não é admin/developer/supervisor. Pelo mesmo
+   * motivo a presença (usePresencaFila) NÃO carrega os médicos: o canal dela é
+   * público e contornaria a tranca.
+   */
+  const podeVerAcompanhamento =
+    role === "admin" || role === "developer" || role === "supervisor";
+
   // Modalidade derivada do slug
   const mod = useMemo(
     () =>
@@ -339,8 +366,12 @@ export function useFilaAssistente({
   const sitFila        = mod.situacaoIds;
   const modalidadeKey  = modalidadeIds[0]; // chave estável p/ fila_assistente_state
   const modalidadeLabel = mod.label;
-  // Só Ultrassom tem kanban por médico
-  const porMedico = mod.slug === "ultrassom";
+  // Modalidades com kanban por médico (colunas separadas, 1 por médico).
+  // Pedido de uma supervisora em 23/set/2026: o Ecocardiograma tinha a mesma
+  // fila linear única das outras modalidades pequenas, e com vários médicos
+  // ao mesmo tempo isso vira uma lista misturada difícil de separar
+  // manualmente — o kanban do Ultrassom resolve exatamente esse problema.
+  const porMedico = POR_MEDICO_SLUGS.has(mod.slug);
 
   // ── Estado ──────────────────────────────────────────────────────────────────
   const [farolRows, setFarolRows]     = useState<FarolRow[]>([]);
@@ -485,33 +516,86 @@ export function useFilaAssistente({
     }
   }, [tenantId, modalidadeKey]);
 
-  // Quem está com a fila aberta AGORA e em quais médicos — presença real do
-  // Realtime, ver usePresencaFila. Em preview não se anuncia: quem olha a tela
-  // de outra pessoa não está acompanhando médico nenhum.
+  // ── Quem está online agora ────────────────────────────────────────────────
+  // Presença real do Realtime (ver usePresencaFila). Só QUEM está online, não
+  // com qual médico. Em preview não se anuncia: quem olha a tela de outra
+  // pessoa não está ali trabalhando aquela fila.
   const { online } = usePresencaFila({
     tenantId,
     eu: myUserId ? { id: myUserId, nome: user?.full_name || "Sem nome", papel: role ?? null } : null,
-    anuncio: isPreview ? null : { modalidadeId: modalidadeKey, medicos: state.medicos_selecionados },
+    anuncio: isPreview ? null : { modalidadeId: modalidadeKey },
   });
+  const onlineIds = useMemo(() => new Set(online.map(p => p.id)), [online]);
 
-  // "Acompanhando": online E com ao menos um médico selecionado.
-  const viewers = useMemo<ViewerDaFila[]>(
-    () => online
-      .filter(p => p.medicos.length > 0)
-      .map(p => ({ id: p.id, nome: p.nome, medicos: p.medicos, souEu: p.souEu })),
-    [online],
-  );
-
-  // Chips "ver como" do supervisor: assistentes de sala online, menos eu.
+  // Chips "ver como" do supervisor: assistentes de sala online agora, menos eu.
   const assistenteList = useMemo<ProfileLite[]>(
-    () => online
-      .filter(p => p.papel === "assistente_sala" && !p.souEu)
-      .map(p => ({ id: p.id, full_name: p.nome, email: null })),
-    [online],
+    () => podeVerAcompanhamento
+      ? online
+          .filter(p => p.papel === "assistente_sala" && !p.souEu)
+          .map(p => ({ id: p.id, full_name: p.nome, email: null }))
+      : [],
+    [online, podeVerAcompanhamento],
   );
 
-  // Mantido para não quebrar quem chama: a presença se atualiza sozinha.
-  const loadAssistentes = useCallback(() => {}, []);
+  // ── Divisão de médicos de hoje — quem ficou com quem ─────────────────────
+  // Vem de `fila_assistente_state` (protegida pela RLS da coordenação), e não
+  // da presença. É a escolha do dia, que vale mesmo com a pessoa fora da tela;
+  // a presença só acrescenta se ela está online agora.
+  const [viewersBrutos, setViewersBrutos] = useState<Array<Omit<ViewerDaFila, "online">>>([]);
+
+  const loadAssistentes = useCallback(async () => {
+    if (!tenantId) return;
+    // Quem não pode ver a lista dos outros não paga por ela: a RLS devolveria
+    // só a própria linha, depois de três consultas.
+    if (!podeVerAcompanhamento) { setViewersBrutos([]); return; }
+    const startOfDayBRT = `${hojeBRT()}T03:00:00.000Z`; // 00:00 BRT = 03:00 UTC
+
+    const { data: states } = await (supabase as any)
+      .from("fila_assistente_state")
+      .select("user_id, medicos_selecionados, updated_at")
+      .eq("tenant_id", tenantId)
+      .gte("updated_at", startOfDayBRT);
+
+    // Uma linha por usuário: o estado é por modalidade, e quem trabalhou em duas
+    // no mesmo dia aparecia duas vezes com listas diferentes de médicos. O
+    // horário é o mais recente das linhas da pessoa.
+    const porUsuario = new Map<string, Set<string>>();
+    const marcadoPorUsuario = new Map<string, Date>();
+    for (const st of (states as Array<{ user_id: string; medicos_selecionados: string[]; updated_at: string }>) ?? []) {
+      if (!(st.medicos_selecionados?.length)) continue;
+      const atual = porUsuario.get(st.user_id) ?? new Set<string>();
+      for (const m of st.medicos_selecionados) atual.add(m);
+      porUsuario.set(st.user_id, atual);
+      const quando = new Date(st.updated_at);
+      const anterior = marcadoPorUsuario.get(st.user_id);
+      if (!anterior || quando > anterior) marcadoPorUsuario.set(st.user_id, quando);
+    }
+
+    if (porUsuario.size === 0) { setViewersBrutos([]); return; }
+
+    const ids = [...porUsuario.keys()];
+    const { data: profs } = await (supabase as any)
+      .from("profiles").select("id, full_name, email").in("id", ids);
+    const perfis = new Map(((profs as ProfileLite[]) ?? []).map(p => [p.id, p] as const));
+
+    setViewersBrutos(
+      ids.map(id => {
+        const p = perfis.get(id);
+        return {
+          id,
+          nome:      p?.full_name || p?.email || id.slice(0, 8),
+          medicos:   [...(porUsuario.get(id) ?? [])].sort((a, b) => a.localeCompare(b, "pt-BR")),
+          souEu:     id === myUserId,
+          marcadoEm: marcadoPorUsuario.get(id) ?? new Date(),
+        };
+      }).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    );
+  }, [tenantId, myUserId, podeVerAcompanhamento]);
+
+  const viewers = useMemo<ViewerDaFila[]>(
+    () => viewersBrutos.map(v => ({ ...v, online: onlineIds.has(v.id) })),
+    [viewersBrutos, onlineIds],
+  );
 
   // "Dr. Fulano → Davi, Maria". Chave é o nome do médico, do jeito que vem do
   // farol — a fila inteira identifica médico por string, não por id.
@@ -678,6 +762,26 @@ export function useFilaAssistente({
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [activeItems]);
+
+  /**
+   * A divisão de médicos, já sem os médicos que não trabalham hoje (Caio, 11/09).
+   *
+   * `medicos_selecionados` é por pessoa e sobrevive de um dia para o outro —
+   * ninguém zera na virada. Medido em 11/09/2026: apareciam médicos sem nenhum
+   * atendimento no dia. A regra é a mesma das colunas do kanban (que já pulam
+   * quem não está em `medicosDoDia`). Filtrar aqui, e não zerar a seleção na
+   * virada, foi escolha do Caio: zerar obrigaria a remarcar toda manhã.
+   *
+   * `medicosDoDia` sai do farol da modalidade aberta, então quem está escalado
+   * em outra modalidade some deste painel — intencional desde 23/set, quando o
+   * Ecocardiograma ganhou kanban por médico.
+   */
+  const viewersDoDia = useMemo<ViewerDaFila[]>(() => {
+    const doDia = new Set(medicosDoDia);
+    return viewers
+      .map(v => ({ ...v, medicos: v.medicos.filter(m => doDia.has(m)) }))
+      .filter(v => v.medicos.length > 0);
+  }, [viewers, medicosDoDia]);
 
   // ── groupItems (função pura, não precisa ser memo por si só) ─────────────────
   function groupItems(source: CardItem[], section: Section): GroupedCard[] {
@@ -1311,7 +1415,9 @@ export function useFilaAssistente({
     ultimaCargaTela,
     falhaCargaTela,
     viewers,
+    viewersDoDia,
     viewersPorMedico,
+    podeVerAcompanhamento,
     alteracaoPendente,
     salvandoAlteracao,
     detalhesGroup,

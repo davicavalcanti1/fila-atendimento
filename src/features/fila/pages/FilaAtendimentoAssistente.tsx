@@ -25,6 +25,7 @@ import {
 import { useEffect, useState } from "react";
 import { DialogMotivoAlteracao, CamposDeMotivo, motivoCompleto } from "../components/MotivoAlteracao";
 import { classePrioridade } from "../lib/prioridade";
+import { DivisaoMedicosHoje } from "../components/DivisaoMedicosHoje";
 import { IndicadorSincronizacao, FaixaFilaDesatualizada } from "../components/IndicadorSincronizacao";
 
 export default function FilaAtendimentoAssistente() {
@@ -61,7 +62,9 @@ export default function FilaAtendimentoAssistente() {
     assistenteList,
     ultimaCargaTela,
     falhaCargaTela,
-    viewers,
+    viewersDoDia,
+    podeVerAcompanhamento,
+    loadAssistentes,
     viewersPorMedico,
     alteracaoPendente,
     salvandoAlteracao,
@@ -125,6 +128,8 @@ export default function FilaAtendimentoAssistente() {
     if (!tenantId) return;
     loadFarol(); // já encadeia os overlays dos atendimentos de hoje
     loadState(targetUserId);
+    loadAssistentes();
+    let divisaoTimer: ReturnType<typeof setTimeout> | null = null;
 
     farolChannelRef.current = supabase
       .channel(`assist-farol-${tenantId}`)
@@ -151,19 +156,23 @@ export default function FilaAtendimentoAssistente() {
       }, (payload: any) => {
         const row = payload?.new ?? payload?.old;
         if (row?.user_id === targetUserId && row?.modalidade_id === modalidadeKey) loadState(targetUserId);
-        // "Quem está acompanhando quem" deixou de depender desta tabela: vem da
-        // presença do Realtime (usePresencaFila), que se atualiza sozinha.
+        // A divisão de médicos vem desta tabela (a presença só diz quem está
+        // online). Agrupado no tempo: selecionar médicos gera um evento por
+        // clique. Para quem não é coordenação, loadAssistentes sai na hora.
+        if (divisaoTimer) clearTimeout(divisaoTimer);
+        divisaoTimer = setTimeout(loadAssistentes, 800);
       })
       .subscribe();
 
     const interval = setInterval(loadFarol, 30_000);
     return () => {
+      if (divisaoTimer) clearTimeout(divisaoTimer);
       if (farolChannelRef.current) supabase.removeChannel(farolChannelRef.current);
       if (filaChannelRef.current)  supabase.removeChannel(filaChannelRef.current);
       if (stateChannelRef.current) supabase.removeChannel(stateChannelRef.current);
       clearInterval(interval);
     };
-  }, [tenantId, targetUserId, mod.modalidadeIds[0], loadFarol, loadOverlays, loadState]);
+  }, [tenantId, targetUserId, mod.modalidadeIds[0], loadFarol, loadOverlays, loadState, loadAssistentes]);
 
   // ── Render helpers ──────────────────────────────────────────────────────────
   if (!tenantId) {
@@ -446,7 +455,7 @@ export default function FilaAtendimentoAssistente() {
             {vendo.length > 0 && (
               <span
                 className="inline-flex items-center gap-1 h-5 px-1.5 rounded-sm border border-border text-[11px] text-muted-foreground shrink-0"
-                title={`Acompanhando este médico: ${vendo.map(v => v.nome).join(", ")}`}
+                title={`Marcou este médico hoje: ${vendo.map(v => v.nome).join(", ")}. É a escolha do dia, não presença na sala.`}
               >
                 <Eye className="h-3 w-3" />
                 {vendo.map(v => (v.souEu ? "você" : v.nome)).join(", ")}
@@ -542,29 +551,13 @@ export default function FilaAtendimentoAssistente() {
           </div>
         )}
 
-        {/* Quem está acompanhando quem, agora. Vale para todo mundo, não só
-            para a supervisão: é o que evita duas pessoas cuidarem do mesmo
-            médico sem saber, e é a informação que some quando alguém pergunta
-            "quem estava vendo esse aqui?" depois do fato. */}
-        {(viewers.length > 0 || (isSupervisorMode && assistenteList.length > 0)) && (
-          <div className="panel px-4 py-2.5 flex flex-col gap-2">
-            {viewers.length > 0 && (
-              <div className="flex items-start gap-3">
-                <span className="console-label shrink-0 pt-1 w-24">Acompanhando</span>
-                <div className="flex flex-col gap-1 min-w-0">
-                  {viewers.map(v => (
-                    <div key={v.id} className="flex items-baseline gap-2 text-xs min-w-0">
-                      <span className={cn("shrink-0 font-semibold", v.souEu ? "text-primary" : "text-foreground")}>
-                        {v.souEu ? `${v.nome} (você)` : v.nome}
-                      </span>
-                      <span className="text-muted-foreground truncate">{v.medicos.join(" · ")}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {isSupervisorMode && assistenteList.length > 0 && (
-              <div className="flex items-center gap-3 flex-wrap">
+        {/* Divisão de médicos do dia — só coordenação (Caio, 11/09/2026); a
+            tranca é a RLS. `viewersDoDia` já vem sem os médicos de ontem, e com
+            o LED de quem está online agora. */}
+        {podeVerAcompanhamento && <DivisaoMedicosHoje viewers={viewersDoDia} now={now} />}
+
+        {isSupervisorMode && assistenteList.length > 0 && (
+          <div className="panel px-4 py-2.5 flex items-center gap-3 flex-wrap">
                 <span className="console-label shrink-0 w-24">Ver como</span>
                 {assistenteList.map(a => (
                   <button
@@ -576,8 +569,6 @@ export default function FilaAtendimentoAssistente() {
                     {a.full_name || a.email || a.id.slice(0, 8)}
                   </button>
                 ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -607,7 +598,7 @@ export default function FilaAtendimentoAssistente() {
                         onClick={() => toggleMedico(m)}
                         disabled={isPreview}
                         aria-pressed={active}
-                        title={outros.length > 0 ? `Também acompanhando: ${outros.map(v => v.nome).join(", ")}` : undefined}
+                        title={outros.length > 0 ? `Também marcou este médico hoje: ${outros.map(v => v.nome).join(", ")}` : undefined}
                         className={cn(
                           "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-sm border text-xs font-medium transition-colors",
                           active
