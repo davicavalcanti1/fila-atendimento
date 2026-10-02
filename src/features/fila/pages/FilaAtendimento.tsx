@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback, useMemo } from "react";
+import { usePresencaFila } from "../hooks/usePresencaFila";
 import { hojeBRT } from "@/lib/dataBRT";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -147,10 +148,6 @@ function FilaHub() {
   const tenantId = profile?.tenant_id ?? "";
   const [total, setTotal] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
-  const [assistentes, setAssistentes] = useState<Array<{
-    id: string; full_name: string | null; email: string | null;
-    medicos_count: number; updated_at: string;
-  }>>([]);
 
   const allMod = FILA_MODALIDADES.flatMap(m => m.modalidadeIds);
   const allSit = Array.from(new Set(FILA_MODALIDADES.flatMap(m => m.situacaoIds)));
@@ -167,77 +164,30 @@ function FilaHub() {
     setTotal(count ?? 0);
   }, [tenantId, allMod.join(","), allSit.join(",")]);
 
-  // Listagem de assistentes ATIVOS — só os que tem fila_assistente_state
-  // gravado hoje E pelo menos 1 médico selecionado. Inclui contagem de
-  // médicos e horário da última alteração pra supervisor saber quem está
-  // realmente trabalhando agora.
-  const loadAssistentes = useCallback(async () => {
-    if (!tenantId) return;
-    if (role !== "supervisor" && role !== "admin" && role !== "developer") return;
-
-    // Início do dia em São Paulo (00:00 BRT) em ISO
-    const startOfDayBRT = (() => {
-      const todayStr = hojeBRT();
-      // 00:00 BRT = 03:00 UTC
-      return `${todayStr}T03:00:00.000Z`;
-    })();
-
-    const { data: states } = await (supabase as any)
-      .from("fila_assistente_state")
-      .select("user_id, medicos_selecionados, updated_at")
-      .eq("tenant_id", tenantId)
-      .gte("updated_at", startOfDayBRT);
-
-    const ativos = (states as Array<{
-      user_id: string; medicos_selecionados: string[]; updated_at: string;
-    }> | null) ?? [];
-    const filtered = ativos.filter(s => (s.medicos_selecionados?.length ?? 0) > 0);
-
-    if (filtered.length === 0) { setAssistentes([]); return; }
-
-    // Filtra só quem realmente tem role 'assistente_sala'. Agora que supervisor/
-    // admin/dev também usam a tela do assistente (cada modalidade tem seleção
-    // própria), eles também escrevem em fila_assistente_state — não devem
-    // aparecer nesta lista, que é destinada a mostrar quem está montando fila
-    // de verdade na recepção.
-    const { data: rolesRows } = await (supabase as any)
-      .from("user_roles")
-      .select("user_id")
-      .eq("tenant_id", tenantId)
-      .eq("role", "assistente_sala")
-      .in("user_id", filtered.map(s => s.user_id));
-    const assistenteIds = new Set(
-      ((rolesRows as Array<{ user_id: string }> | null) ?? []).map(r => r.user_id)
-    );
-    const apenasAssistentes = filtered.filter(s => assistenteIds.has(s.user_id));
-
-    if (apenasAssistentes.length === 0) { setAssistentes([]); return; }
-
-    const ids = apenasAssistentes.map(s => s.user_id);
-    const { data: profs } = await (supabase as any)
-      .from("profiles")
-      .select("id, full_name, email")
-      .in("id", ids);
-
-    const byId = new Map<string, { full_name: string | null; email: string | null }>();
-    for (const p of ((profs as any[]) ?? [])) byId.set(p.id, p);
-
-    setAssistentes(
-      apenasAssistentes
-        .map(s => ({
-          id:            s.user_id,
-          full_name:     byId.get(s.user_id)?.full_name ?? null,
-          email:         byId.get(s.user_id)?.email ?? null,
-          medicos_count: s.medicos_selecionados.length,
-          updated_at:    s.updated_at,
-        }))
-        .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
-    );
-  }, [tenantId, role]);
-
-  useEffect(() => { loadTotal(); loadAssistentes(); }, [loadTotal, loadAssistentes, tick]);
-
+  // Assistentes de sala com a fila aberta AGORA — presença real do Realtime
+  // (ver usePresencaFila). O hub só escuta: quem está aqui não está
+  // acompanhando médico, então não se anuncia.
+  //
+  // Antes era quem tinha salvo seleção em algum momento de hoje, e ninguém saía
+  // da lista até meia-noite. O horário exibido agora é "online desde".
+  const { online } = usePresencaFila({ tenantId });
   const canSeeAssistentes = role === "supervisor" || role === "admin" || role === "developer";
+  const assistentes = useMemo(
+    () => canSeeAssistentes
+      ? online
+          .filter(p => p.papel === "assistente_sala")
+          .map(p => ({
+            id:            p.id,
+            full_name:     p.nome,
+            email:         null as string | null,
+            medicos_count: p.medicos.length,
+            updated_at:    p.desde,
+          }))
+      : [],
+    [online, canSeeAssistentes],
+  );
+
+  useEffect(() => { loadTotal(); }, [loadTotal, tick]);
 
   return (
     <MainLayout>
@@ -281,14 +231,14 @@ function FilaHub() {
             <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/70">
               <div className="flex items-center gap-2.5 min-w-0">
                 <Stethoscope className="h-4 w-4 text-muted-foreground shrink-0" />
-                <h2 className="text-sm font-bold text-foreground">Assistentes ativos hoje</h2>
+                <h2 className="text-sm font-bold text-foreground">Assistentes online agora</h2>
                 <span className="font-mono text-xs font-bold text-foreground/80">{assistentes.length}</span>
               </div>
               <span className="console-label hidden sm:block">Clique para ver a fila do assistente em modo leitura</span>
             </div>
             {assistentes.length === 0 ? (
               <p className="px-4 py-4 text-sm text-muted-foreground">
-                Nenhum assistente ativo no momento. Aparecem aqui assim que selecionarem médicos no painel.
+                Nenhum assistente com a fila aberta agora. Aparecem aqui assim que abrem uma fila, e saem quando fecham.
               </p>
             ) : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -304,10 +254,10 @@ function FilaHub() {
                         onClick={() => navigate(`/fila-atendimento?as=${a.id}`)}
                         className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 hover:bg-muted/60 transition-colors"
                       >
-                        <span className="lamp lamp-ok h-1.5 w-1.5 shrink-0" title="Ativo hoje" />
+                        <span className="lamp lamp-ok h-1.5 w-1.5 shrink-0" title="Online agora" />
                         <span className="flex-1 min-w-0 truncate text-sm font-semibold text-foreground">{nome}</span>
                         <span className="console-label shrink-0">{a.medicos_count} méd.</span>
-                        <span className="font-mono text-[11px] text-muted-foreground shrink-0">{updatedHHMM}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground shrink-0" title="Online desde">{updatedHHMM}</span>
                       </button>
                     </li>
                   );

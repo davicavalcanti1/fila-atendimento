@@ -81,7 +81,6 @@ export default function FilaAtendimentoAssistente() {
     loadFarol,
     loadOverlays,
     loadState,
-    loadAssistentes,
 
     // Refs dos canais
     farolChannelRef,
@@ -121,10 +120,8 @@ export default function FilaAtendimentoAssistente() {
   // Fica aqui porque depende de targetUserId que é derivado no componente.
   useEffect(() => {
     if (!tenantId) return;
-    let viewersTimer: ReturnType<typeof setTimeout> | null = null;
     loadFarol(); // já encadeia os overlays dos atendimentos de hoje
     loadState(targetUserId);
-    loadAssistentes();
 
     farolChannelRef.current = supabase
       .channel(`assist-farol-${tenantId}`)
@@ -151,13 +148,8 @@ export default function FilaAtendimentoAssistente() {
       }, (payload: any) => {
         const row = payload?.new ?? payload?.old;
         if (row?.user_id === targetUserId && row?.modalidade_id === modalidadeKey) loadState(targetUserId);
-        // Qualquer linha do tenant mexe em "quem está acompanhando quem" —
-        // inclusive as de outras pessoas e de outras modalidades, que é
-        // justamente o que essa lista precisa refletir. Agrupado no tempo
-        // porque selecionar médicos gera um evento por clique, e cada um custa
-        // três consultas vezes o número de telas abertas.
-        if (viewersTimer) clearTimeout(viewersTimer);
-        viewersTimer = setTimeout(loadAssistentes, 800);
+        // "Quem está acompanhando quem" deixou de depender desta tabela: vem da
+        // presença do Realtime (usePresencaFila), que se atualiza sozinha.
       })
       .subscribe();
 
@@ -166,10 +158,9 @@ export default function FilaAtendimentoAssistente() {
       if (farolChannelRef.current) supabase.removeChannel(farolChannelRef.current);
       if (filaChannelRef.current)  supabase.removeChannel(filaChannelRef.current);
       if (stateChannelRef.current) supabase.removeChannel(stateChannelRef.current);
-      if (viewersTimer) clearTimeout(viewersTimer);
       clearInterval(interval);
     };
-  }, [tenantId, targetUserId, mod.modalidadeIds[0], loadFarol, loadOverlays, loadState, loadAssistentes]);
+  }, [tenantId, targetUserId, mod.modalidadeIds[0], loadFarol, loadOverlays, loadState]);
 
   // ── Render helpers ──────────────────────────────────────────────────────────
   if (!tenantId) {

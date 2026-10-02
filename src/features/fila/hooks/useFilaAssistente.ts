@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { differenceInMinutes } from "date-fns";
 import { todayBRT, FILA_MODALIDADES, type FilaSlug } from "../pages/FilaAtendimento";
 import { SITUACAO } from "@/services/netris/client";
+import { usePresencaFila } from "./usePresencaFila";
 import type { PacienteAtendimento } from "../components/PacienteDetalhesDialog";
 
 // ── Tipos exportados ──────────────────────────────────────────────────────────
@@ -349,8 +350,6 @@ export function useFilaAssistente({
   const [savingState, setSavingState] = useState(false);
   const [now, setNow]                 = useState(() => new Date());
   const [clockTime, setClockTime]     = useState(() => new Date());
-  const [assistenteList, setAssistenteList] = useState<ProfileLite[]>([]);
-  const [viewers, setViewers]               = useState<ViewerDaFila[]>([]);
   const [alteracaoPendente, setAlteracaoPendente] = useState<AlteracaoPendente | null>(null);
   const [salvandoAlteracao, setSalvandoAlteracao] = useState(false);
   const [detalhesGroup, setDetalhesGroup]   = useState<GroupedCard | null>(null);
@@ -471,69 +470,33 @@ export function useFilaAssistente({
     }
   }, [tenantId, modalidadeKey]);
 
-  // Quem está com a fila aberta hoje e em quais médicos.
-  //
-  // Antes isto só rodava para supervisor/admin/developer e abortava quando
-  // `readOnly` — ou seja, nunca para a assistente, que é justamente quem a lista
-  // rastreia. Agora roda para todo mundo. A RLS de `fila_assistente_state` é por
-  // papel (admin, developer, supervisor e assistente_sala leem as linhas dos
-  // outros), então quem está fora dessa lista recebe zero linhas e o painel
-  // simplesmente não aparece — sem erro e sem tela quebrada.
-  const loadAssistentes = useCallback(async () => {
-    if (!tenantId) return;
-    const startOfDayBRT = `${hojeBRT()}T03:00:00.000Z`; // 00:00 BRT = 03:00 UTC
+  // Quem está com a fila aberta AGORA e em quais médicos — presença real do
+  // Realtime, ver usePresencaFila. Em preview não se anuncia: quem olha a tela
+  // de outra pessoa não está acompanhando médico nenhum.
+  const { online } = usePresencaFila({
+    tenantId,
+    eu: myUserId ? { id: myUserId, nome: user?.full_name || "Sem nome", papel: role ?? null } : null,
+    anuncio: isPreview ? null : { modalidadeId: modalidadeKey, medicos: state.medicos_selecionados },
+  });
 
-    const { data: states } = await (supabase as any)
-      .from("fila_assistente_state")
-      .select("user_id, medicos_selecionados, updated_at")
-      .eq("tenant_id", tenantId)
-      .gte("updated_at", startOfDayBRT);
+  // "Acompanhando": online E com ao menos um médico selecionado.
+  const viewers = useMemo<ViewerDaFila[]>(
+    () => online
+      .filter(p => p.medicos.length > 0)
+      .map(p => ({ id: p.id, nome: p.nome, medicos: p.medicos, souEu: p.souEu })),
+    [online],
+  );
 
-    // Uma linha por usuário: o estado é por modalidade, e quem trabalhou em duas
-    // no mesmo dia aparecia duas vezes com listas diferentes de médicos.
-    const porUsuario = new Map<string, Set<string>>();
-    for (const s of (states as Array<{ user_id: string; medicos_selecionados: string[] }>) ?? []) {
-      if (!(s.medicos_selecionados?.length)) continue;
-      const atual = porUsuario.get(s.user_id) ?? new Set<string>();
-      for (const m of s.medicos_selecionados) atual.add(m);
-      porUsuario.set(s.user_id, atual);
-    }
+  // Chips "ver como" do supervisor: assistentes de sala online, menos eu.
+  const assistenteList = useMemo<ProfileLite[]>(
+    () => online
+      .filter(p => p.papel === "assistente_sala" && !p.souEu)
+      .map(p => ({ id: p.id, full_name: p.nome, email: null })),
+    [online],
+  );
 
-    if (porUsuario.size === 0) { setViewers([]); setAssistenteList([]); return; }
-
-    const ids = [...porUsuario.keys()];
-    const [{ data: profs }, { data: rolesRows }] = await Promise.all([
-      (supabase as any).from("profiles").select("id, full_name, email").in("id", ids),
-      (supabase as any).from("user_roles").select("user_id")
-        .eq("tenant_id", tenantId).eq("role", "assistente_sala").in("user_id", ids),
-    ]);
-
-    const perfis = new Map(
-      ((profs as ProfileLite[]) ?? []).map(p => [p.id, p] as const)
-    );
-    const assistenteIds = new Set(
-      ((rolesRows as Array<{ user_id: string }> | null) ?? []).map(r => r.user_id)
-    );
-
-    setViewers(
-      ids.map(id => {
-        const p = perfis.get(id);
-        return {
-          id,
-          nome:    p?.full_name || p?.email || id.slice(0, 8),
-          medicos: [...(porUsuario.get(id) ?? [])].sort((a, b) => a.localeCompare(b, "pt-BR")),
-          souEu:   id === myUserId,
-        };
-      }).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
-    );
-
-    // Os chips de preview do supervisor continuam listando só assistentes.
-    setAssistenteList(
-      ids.filter(id => assistenteIds.has(id))
-         .map(id => perfis.get(id))
-         .filter((p): p is ProfileLite => !!p),
-    );
-  }, [tenantId, myUserId]);
+  // Mantido para não quebrar quem chama: a presença se atualiza sozinha.
+  const loadAssistentes = useCallback(() => {}, []);
 
   // "Dr. Fulano → Davi, Maria". Chave é o nome do médico, do jeito que vem do
   // farol — a fila inteira identifica médico por string, não por id.
