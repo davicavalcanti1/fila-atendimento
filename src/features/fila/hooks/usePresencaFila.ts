@@ -12,7 +12,12 @@
 // presença vive só na memória do servidor de Realtime.
 //
 // ── O que cada aba anuncia ───────────────────────────────────────────────────
-// Nome, papel, modalidade aberta e os médicos selecionados nela. Nome e papel
+// Nome, papel e modalidade aberta. NÃO anuncia os médicos selecionados, de
+// propósito: quem está com qual médico é informação de coordenação (decisão do
+// Caio em 11/09/2026), trancada pela RLS de `fila_assistente_state` (migration
+// 20260911180000). O canal de presença é público — mandar os médicos por aqui
+// abriria para qualquer assistente o que o banco fecha. A divisão de médicos
+// continua vindo da tabela, e a presença só diz QUEM está online. Nome e papel
 // vêm do próprio cliente, então são DECLARADOS, não verificados: servem para
 // exibir quem está onde, nunca para autorizar nada. Quem decide o que cada um
 // pode ler ou gravar continua sendo a RLS.
@@ -25,8 +30,8 @@
 //
 // ── Várias abas da mesma pessoa ──────────────────────────────────────────────
 // A chave de presença é o user_id, então duas abas viram duas "metas" sob a
-// mesma pessoa. A lista junta tudo: médicos somados, modalidades somadas, e o
-// "desde" é o da aba mais antiga.
+// mesma pessoa. A lista junta tudo: modalidades somadas, e o "desde" é o da aba
+// mais antiga.
 // =============================================================================
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -38,7 +43,6 @@ interface MetaPresenca {
   nome:          string;
   papel:         string | null;
   modalidade_id: number | null;
-  medicos:       string[];
   /** ISO de quando esta aba entrou. */
   desde:         string;
 }
@@ -48,7 +52,6 @@ export interface PessoaOnline {
   id:          string;
   nome:        string;
   papel:       string | null;
-  medicos:     string[];
   modalidades: number[];
   /** ISO — a aba mais antiga desta pessoa que ainda está aberta. */
   desde:       string;
@@ -67,18 +70,16 @@ interface Params {
    * preview, que não está acompanhando médico nenhum — está olhando a tela de
    * outra pessoa, e anunciar a seleção DELA como sua inventaria presença).
    */
-  anuncio?: { modalidadeId: number; medicos: string[] } | null;
+  anuncio?: { modalidadeId: number } | null;
 }
 
 function juntar(estado: Record<string, MetaPresenca[]>, meuId: string | undefined): PessoaOnline[] {
   const pessoas: PessoaOnline[] = [];
   for (const [chave, metas] of Object.entries(estado)) {
     if (!metas?.length) continue;
-    const medicos = new Set<string>();
     const modalidades = new Set<number>();
     let desde = metas[0].desde;
     for (const m of metas) {
-      for (const med of m.medicos ?? []) medicos.add(med);
       if (m.modalidade_id != null) modalidades.add(m.modalidade_id);
       if (m.desde < desde) desde = m.desde;
     }
@@ -87,7 +88,6 @@ function juntar(estado: Record<string, MetaPresenca[]>, meuId: string | undefine
       id,
       nome:        metas[0].nome || id.slice(0, 8),
       papel:       metas[0].papel ?? null,
-      medicos:     [...medicos].sort((a, b) => a.localeCompare(b, "pt-BR")),
       modalidades: [...modalidades],
       desde,
       souEu:       id === meuId,
@@ -199,9 +199,9 @@ export function usePresencaFila({ tenantId, eu, anuncio }: Params) {
   }, [tenantId, meuId]);
 
   // ── O que eu anuncio ─────────────────────────────────────────────────────
-  // Em efeito separado: trocar de médico não pode reabrir nada — a pessoa
-  // piscaria fora e dentro da lista dos outros a cada clique.
-  const chaveAnuncio = anuncio ? `${anuncio.modalidadeId}|${anuncio.medicos.join("§")}` : "";
+  // Em efeito separado: trocar de modalidade não pode reabrir o canal — a
+  // pessoa piscaria fora e dentro da lista dos outros.
+  const chaveAnuncio = anuncio ? String(anuncio.modalidadeId) : "";
   useEffect(() => {
     if (!tenantId || !meuId) return;
     const sala = salas.get(`fila-presenca-${tenantId}`);
@@ -211,7 +211,6 @@ export function usePresencaFila({ tenantId, eu, anuncio }: Params) {
       nome:          eu.nome,
       papel:         eu.papel,
       modalidade_id: anuncio.modalidadeId,
-      medicos:       anuncio.medicos,
       desde:         desdeRef.current,
     } : null);
     publicar(sala);
