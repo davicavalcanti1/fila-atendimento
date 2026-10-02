@@ -57,7 +57,10 @@ export interface PessoaOnline {
 
 interface Params {
   tenantId: string;
-  /** Quem sou eu. Sem isto o hook só escuta, não se anuncia. */
+  /**
+   * Quem sou eu. Obrigatório até para só escutar: a chave de presença do canal
+   * é o user_id, e o canal é compartilhado entre o hub e a fila.
+   */
   eu?: { id: string; nome: string; papel: string | null } | null;
   /**
    * O que anunciar. `null` = escuta sem aparecer (o hub, e o supervisor em
@@ -93,73 +96,128 @@ function juntar(estado: Record<string, MetaPresenca[]>, meuId: string | undefine
   return pessoas.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
+// ── Um canal por tenant, aberto enquanto o app estiver aberto ────────────────
+// O canal NÃO pode ser criado e destruído por componente. O `removeChannel` do
+// supabase-js só tira o canal da lista depois da resposta do servidor, e o
+// `supabase.channel(nome)` devolve o canal existente quando o nome ainda está na
+// lista. Desmontar e remontar na mesma hora — o StrictMode faz isso em todo
+// efeito no dev, e navegar do hub para a fila faz o mesmo em produção —
+// devolvia o canal antigo, já inscrito, e o `.on("presence")` estourava:
+// "cannot add `presence` callbacks … after `subscribe()`".
+//
+// Então o canal vive num registro do módulo e não fecha quando a tela sai:
+// sair só retira o anúncio (untrack), e a pessoa some da lista dos outros do
+// mesmo jeito. Fechar a aba encerra a conexão inteira, que é a saída real.
+//
+// A única recriação é quando muda o usuário (a chave de presença é fixada na
+// entrada do canal). Aí o novo só é criado depois que o antigo terminou de
+// sair, que é a corrida acima resolvida por ordem, não por sorte.
+
+type Ouvinte = (pessoas: Record<string, MetaPresenca[]>) => void;
+type Canal = ReturnType<typeof supabase.channel>;
+
+interface Sala {
+  chave:     string;
+  canal:     Canal | null;
+  ouvintes:  Set<Ouvinte>;
+  /** Anúncio de cada consumidor; vale o último não nulo. */
+  anuncios:  Map<symbol, MetaPresenca | null>;
+  inscrito:  boolean;
+  estado:    Record<string, MetaPresenca[]>;
+}
+
+const salas = new Map<string, Sala>();
+
+function metaVigente(sala: Sala): MetaPresenca | null {
+  let vigente: MetaPresenca | null = null;
+  for (const m of sala.anuncios.values()) if (m) vigente = m;
+  return vigente;
+}
+
+function publicar(sala: Sala) {
+  if (!sala.canal || !sala.inscrito) return;
+  const meta = metaVigente(sala);
+  if (meta) sala.canal.track(meta);
+  else sala.canal.untrack();
+}
+
+function conectar(sala: Sala, nome: string) {
+  // Sem chave própria, o Realtime gera uma por conexão e a mesma pessoa
+  // apareceria uma vez por aba.
+  const canal = supabase.channel(nome, { config: { presence: { key: sala.chave } } });
+  sala.canal = canal;
+  canal.on("presence", { event: "sync" }, () => {
+    sala.estado = canal.presenceState() as unknown as Record<string, MetaPresenca[]>;
+    for (const o of sala.ouvintes) o(sala.estado);
+  });
+  canal.subscribe((status) => {
+    sala.inscrito = status === "SUBSCRIBED";
+    if (sala.inscrito) publicar(sala);
+  });
+}
+
+function abrirSala(tenantId: string, chave: string): Sala {
+  const nome = `fila-presenca-${tenantId}`;
+  const existente = salas.get(nome);
+  if (existente && existente.chave === chave) return existente;
+
+  const sala: Sala = { chave, canal: null, ouvintes: new Set(), anuncios: new Map(), inscrito: false, estado: {} };
+  salas.set(nome, sala);
+
+  const anterior = existente?.canal;
+  if (!anterior) {
+    conectar(sala, nome);
+  } else {
+    existente.inscrito = false;
+    anterior.untrack()
+      .catch(() => undefined)
+      .then(() => supabase.removeChannel(anterior))
+      .finally(() => { if (salas.get(nome) === sala) conectar(sala, nome); });
+  }
+  return sala;
+}
+
 export function usePresencaFila({ tenantId, eu, anuncio }: Params) {
-  const [online, setOnline] = useState<PessoaOnline[]>([]);
-  const canalRef   = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const inscrito   = useRef(false);
-  const desdeRef   = useRef(new Date().toISOString());
-  const meuId      = eu?.id;
+  const [estado, setEstado] = useState<Record<string, MetaPresenca[]>>({});
+  const desdeRef = useRef(new Date().toISOString());
+  const idRef    = useRef(Symbol("consumidor-presenca"));
+  const meuId    = eu?.id;
 
-  // O anúncio mais recente, lido pelo callback de inscrição. Em ref porque o
-  // canal é criado uma vez por tenant/pessoa, e trocar de médico não pode
-  // derrubar e recriar o canal — isso faria a pessoa piscar fora e dentro da
-  // lista dos outros a cada clique.
-  const anuncioRef = useRef(anuncio);
-  anuncioRef.current = anuncio;
+  // ── Ouvir a sala ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!tenantId || !meuId) return;
+    const sala = abrirSala(tenantId, meuId);
+    const ouvinte: Ouvinte = (e) => setEstado(e);
+    sala.ouvintes.add(ouvinte);
+    setEstado(sala.estado);
+    const id = idRef.current;
+    return () => {
+      sala.ouvintes.delete(ouvinte);
+      sala.anuncios.delete(id);
+      publicar(sala);
+    };
+  }, [tenantId, meuId]);
 
-  const montarMeta = (): MetaPresenca | null => {
-    if (!eu || !anuncioRef.current) return null;
-    return {
+  // ── O que eu anuncio ─────────────────────────────────────────────────────
+  // Em efeito separado: trocar de médico não pode reabrir nada — a pessoa
+  // piscaria fora e dentro da lista dos outros a cada clique.
+  const chaveAnuncio = anuncio ? `${anuncio.modalidadeId}|${anuncio.medicos.join("§")}` : "";
+  useEffect(() => {
+    if (!tenantId || !meuId) return;
+    const sala = salas.get(`fila-presenca-${tenantId}`);
+    if (!sala) return;
+    sala.anuncios.set(idRef.current, eu && anuncio ? {
       user_id:       eu.id,
       nome:          eu.nome,
       papel:         eu.papel,
-      modalidade_id: anuncioRef.current.modalidadeId,
-      medicos:       anuncioRef.current.medicos,
+      modalidade_id: anuncio.modalidadeId,
+      medicos:       anuncio.medicos,
       desde:         desdeRef.current,
-    };
-  };
-
-  // ── Canal: um por tenant e pessoa ─────────────────────────────────────────
-  useEffect(() => {
-    if (!tenantId) return;
-    const canal = supabase.channel(`fila-presenca-${tenantId}`, {
-      // Sem chave própria, o Realtime gera uma por conexão e a mesma pessoa
-      // apareceria uma vez por aba.
-      config: { presence: { key: meuId ?? "" } },
-    });
-    canalRef.current = canal;
-
-    canal.on("presence", { event: "sync" }, () => {
-      setOnline(juntar(canal.presenceState() as unknown as Record<string, MetaPresenca[]>, meuId));
-    });
-
-    canal.subscribe((status) => {
-      inscrito.current = status === "SUBSCRIBED";
-      if (!inscrito.current) return;
-      const meta = montarMeta();
-      if (meta) canal.track(meta);
-    });
-
-    return () => {
-      inscrito.current = false;
-      canalRef.current = null;
-      // untrack antes de sair: avisa os outros na hora, em vez de esperar o
-      // timeout do heartbeat.
-      canal.untrack().finally(() => supabase.removeChannel(canal));
-    };
+    } : null);
+    publicar(sala);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId, meuId]);
+  }, [tenantId, meuId, chaveAnuncio, eu?.nome, eu?.papel]);
 
-  // ── Reanuncia quando muda o que eu acompanho ─────────────────────────────
-  const chaveAnuncio = anuncio ? `${anuncio.modalidadeId}|${anuncio.medicos.join("§")}` : "";
-  useEffect(() => {
-    const canal = canalRef.current;
-    if (!canal || !inscrito.current) return;
-    const meta = montarMeta();
-    if (meta) canal.track(meta);
-    else canal.untrack();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chaveAnuncio, eu?.nome, eu?.papel]);
-
+  const online = useMemo(() => juntar(estado, meuId), [estado, meuId]);
   return useMemo(() => ({ online }), [online]);
 }

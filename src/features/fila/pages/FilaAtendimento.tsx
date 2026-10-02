@@ -170,7 +170,11 @@ function FilaHub() {
   //
   // Antes era quem tinha salvo seleção em algum momento de hoje, e ninguém saía
   // da lista até meia-noite. O horário exibido agora é "online desde".
-  const { online } = usePresencaFila({ tenantId });
+  const { online } = usePresencaFila({
+    tenantId,
+    eu: profile?.id ? { id: profile.id, nome: profile.full_name || "Sem nome", papel: role ?? null } : null,
+    anuncio: null,
+  });
   const canSeeAssistentes = role === "supervisor" || role === "admin" || role === "developer";
   const assistentes = useMemo(
     () => canSeeAssistentes
