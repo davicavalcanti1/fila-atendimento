@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.*
+# .env.example é o contrato do ambiente — precisa ser versionado. `.env.*`
+# acima o pegaria junto com os arquivos de segredo (bug já visto no receituarios).
+!.env.example
+!**/.env.example
+supabase/.temp/
+*.log

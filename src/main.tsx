@@ -1,0 +1,62 @@
+import { StrictMode, Suspense, lazy, type ReactNode } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
+import { Loader2 } from "lucide-react";
+import { AuthProvider, useAuth } from "@/shared/contexts/AuthContext";
+import Login from "@/pages/Login";
+import "./index.css";
+
+// Mesmos paths do sistema de origem — bookmarks continuam funcionando.
+const FilaAtendimento           = lazy(() => import("@/features/fila/pages/FilaAtendimento"));
+const FilaAtendimentoAssistente = lazy(() => import("@/features/fila/pages/FilaAtendimentoAssistente"));
+
+// ── Onde este app está montado ───────────────────────────────────────────────
+// Ele atende em dois endereços, e as rotas abaixo são as MESMAS nos dois:
+//
+//   host próprio          https://<host>/fila-atendimento/ultrassom
+//   dentro do sistema     https://gestao.…/fila-atendimento-app/fila-atendimento/ultrassom
+//
+// No segundo caso o `/fila-atendimento` puro pertence ao controleoperacional —
+// é a tela dele que nos exibe dentro do menu, num iframe. Ver ADR 0003 em
+// imago-platform/docs/adr. O basename é lido do endereço atual porque o MESMO
+// build roda nos dois lugares — é a mesma imagem Docker.
+const BASENAME = window.location.pathname.startsWith("/fila-atendimento-app") ? "/fila-atendimento-app" : "/";
+
+const queryClient = new QueryClient();
+
+function CenterSpinner() {
+  return (
+    <div className="min-h-screen grid place-items-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <CenterSpinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter basename={BASENAME}>
+          <Suspense fallback={<CenterSpinner />}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/fila-atendimento" element={<RequireAuth><FilaAtendimento /></RequireAuth>} />
+              <Route path="/fila-atendimento/:slug" element={<RequireAuth><FilaAtendimentoAssistente /></RequireAuth>} />
+              <Route path="*" element={<Navigate to="/fila-atendimento" replace />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+        <Toaster richColors position="top-right" />
+      </AuthProvider>
+    </QueryClientProvider>
+  </StrictMode>
+);

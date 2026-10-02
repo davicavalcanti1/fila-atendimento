@@ -126,7 +126,7 @@ export const ACAO_LABEL: Record<AcaoFila, string> = {
 };
 
 // "A chegar" é fixa: A_CONFIRMAR, CONFIRMADO, CHEGOU, ATENDIMENTO
-const SIT_AGENDADOS = [
+const SIT_AGENDADOS: readonly number[] = [
   SITUACAO.A_CONFIRMAR,
   SITUACAO.CONFIRMADO,
   SITUACAO.CHEGOU,

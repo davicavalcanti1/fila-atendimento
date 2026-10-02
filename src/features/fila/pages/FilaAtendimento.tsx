@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import FilaAtendimentoAssistente from "./FilaAtendimentoAssistente";
 
 // Situações usadas por cada modalidade (espelha o que cada página do Farol filtra)
-const SIT_FAROL = [SITUACAO.ENCAMINHADO_EXAME];
-const SIT_RM_TC = [
+const SIT_FAROL: readonly number[] = [SITUACAO.ENCAMINHADO_EXAME];
+const SIT_RM_TC: readonly number[] = [
   SITUACAO.ENCAMINHADO_EXAME,
   SITUACAO.ANAMNESE,
   SITUACAO.PACIENTE_PREPARADO,

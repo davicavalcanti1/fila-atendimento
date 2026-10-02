@@ -1,0 +1,277 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   IMAGO DESIGN SYSTEM — camada de compatibilidade do dark mode
+   ---------------------------------------------------------------------------
+   ARQUIVO GERADO. Não edite nas cópias dentro dos apps.
+   Fonte da verdade: imago-platform/packages/design/src/compat-dark.css
+
+   Isto NÃO é design system: é remendo, e é opt-in por isso.
+
+   Os apps mais antigos têm centenas de classes Tailwind de cor fixa escritas
+   direto no JSX (bg-white, text-gray-700, border-slate-200). Elas ignoram os
+   tokens e, no tema escuro, produzem card branco com texto branco. Este
+   arquivo remapeia essas classes para os tokens à força.
+
+   O certo é trocar a classe fixa pelo token no componente e apagar a linha
+   correspondente daqui. Importe só enquanto o app ainda tiver cor fixa no JSX;
+   app novo não importa.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Dark mode — override global para classes Tailwind hardcoded
+   Força cards brancos, fundos claros e textos escuros a respeitarem o tema
+   navy quando `.dark` está ativo. Estratégia pragmática para remapear
+   centenas de ocorrências em feature modules sem editar arquivo por arquivo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.dark .bg-white         { background-color: hsl(var(--card)) !important; }
+.dark .bg-white\/95     { background-color: hsl(var(--card) / 0.95) !important; }
+.dark .bg-white\/90     { background-color: hsl(var(--card) / 0.9) !important; }
+.dark .bg-white\/80     { background-color: hsl(var(--card) / 0.8) !important; }
+.dark .bg-white\/70     { background-color: hsl(var(--card) / 0.7) !important; }
+.dark .bg-white\/60     { background-color: hsl(var(--card) / 0.6) !important; }
+.dark .bg-white\/50     { background-color: hsl(var(--card) / 0.5) !important; }
+
+.dark .bg-gray-50,
+.dark .bg-slate-50,
+.dark .bg-zinc-50,
+.dark .bg-neutral-50,
+.dark .bg-stone-50      { background-color: hsl(var(--card)) !important; }
+
+.dark .bg-gray-100,
+.dark .bg-slate-100,
+.dark .bg-zinc-100,
+.dark .bg-neutral-100   { background-color: hsl(var(--muted)) !important; }
+
+.dark .bg-gray-200,
+.dark .bg-slate-200     { background-color: hsl(var(--muted)) !important; }
+
+/* Backgrounds com opacidade frequentemente usados */
+.dark .bg-gray-50\/50,
+.dark .bg-slate-50\/50  { background-color: hsl(var(--muted) / 0.3) !important; }
+
+/* Textos: cinzas claros (baixa relevância) → muted-foreground */
+.dark .text-gray-400,
+.dark .text-slate-400,
+.dark .text-zinc-400    { color: hsl(var(--muted-foreground)) !important; }
+
+.dark .text-gray-500,
+.dark .text-slate-500,
+.dark .text-zinc-500,
+.dark .text-neutral-500 { color: hsl(var(--muted-foreground)) !important; }
+
+.dark .text-gray-600,
+.dark .text-slate-600,
+.dark .text-zinc-600,
+.dark .text-neutral-600 { color: hsl(var(--muted-foreground)) !important; }
+
+/* Textos escuros (alto contraste) → foreground (claro no dark) */
+.dark .text-gray-700,
+.dark .text-slate-700,
+.dark .text-zinc-700,
+.dark .text-neutral-700 { color: hsl(var(--foreground)) !important; }
+
+.dark .text-gray-800,
+.dark .text-slate-800,
+.dark .text-zinc-800,
+.dark .text-neutral-800 { color: hsl(var(--foreground)) !important; }
+
+.dark .text-gray-900,
+.dark .text-slate-900,
+.dark .text-zinc-900,
+.dark .text-neutral-900 { color: hsl(var(--foreground)) !important; }
+
+.dark .text-black       { color: hsl(var(--foreground)) !important; }
+
+/* Borders */
+.dark .border-gray-100,
+.dark .border-slate-100,
+.dark .border-zinc-100,
+.dark .border-gray-200,
+.dark .border-slate-200,
+.dark .border-zinc-200  { border-color: hsl(var(--border)) !important; }
+
+.dark .border-gray-300,
+.dark .border-slate-300,
+.dark .border-zinc-300  { border-color: hsl(var(--border)) !important; }
+
+/* Hover backgrounds claros */
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-zinc-50:hover      { background-color: hsl(var(--muted) / 0.5) !important; }
+
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-zinc-100:hover     { background-color: hsl(var(--muted)) !important; }
+
+.dark .hover\:bg-gray-200:hover,
+.dark .hover\:bg-slate-200:hover    { background-color: hsl(var(--muted)) !important; }
+
+/* Divides */
+.dark .divide-gray-100 > *,
+.dark .divide-gray-200 > *,
+.dark .divide-slate-100 > *,
+.dark .divide-slate-200 > * { border-color: hsl(var(--border)) !important; }
+
+/* Shadcn cards já usam bg-card — mas reforça caso algum componente custom tenha perdido */
+.dark [class*="card"] .bg-white { background-color: hsl(var(--card)) !important; }
+
+/* Fundos zinc/neutral 50-200 (usados muito em cards de ocorrência, listas) */
+.dark .bg-zinc-50,
+.dark .bg-neutral-50,
+.dark .bg-stone-50       { background-color: hsl(var(--muted) / 0.5) !important; }
+.dark .bg-zinc-100,
+.dark .bg-neutral-100,
+.dark .bg-stone-100      { background-color: hsl(var(--muted)) !important; }
+.dark .bg-zinc-200,
+.dark .bg-neutral-200    { background-color: hsl(var(--muted)) !important; }
+
+.dark .border-zinc-100,
+.dark .border-neutral-100,
+.dark .border-zinc-200,
+.dark .border-neutral-200,
+.dark .border-zinc-300,
+.dark .border-neutral-300 { border-color: hsl(var(--border)) !important; }
+
+.dark .text-zinc-400,
+.dark .text-neutral-400,
+.dark .text-stone-400    { color: hsl(var(--muted-foreground)) !important; }
+.dark .text-zinc-500,
+.dark .text-neutral-500,
+.dark .text-stone-500    { color: hsl(var(--muted-foreground)) !important; }
+.dark .text-zinc-600,
+.dark .text-neutral-600,
+.dark .text-stone-600    { color: hsl(var(--muted-foreground)) !important; }
+.dark .text-zinc-700,
+.dark .text-neutral-700,
+.dark .text-stone-700    { color: hsl(var(--foreground)) !important; }
+.dark .text-zinc-800,
+.dark .text-neutral-800,
+.dark .text-stone-800    { color: hsl(var(--foreground)) !important; }
+.dark .text-zinc-900,
+.dark .text-neutral-900,
+.dark .text-stone-900    { color: hsl(var(--foreground)) !important; }
+
+/* Fundos coloridos leves (amber-50, green-50, red-50, blue-50) → versões escuras transparentes */
+.dark .bg-red-50         { background-color: hsl(0 62% 25% / 0.3) !important; }
+.dark .bg-red-100        { background-color: hsl(0 62% 30% / 0.4) !important; }
+.dark .bg-green-50       { background-color: hsl(142 70% 25% / 0.3) !important; }
+.dark .bg-green-100      { background-color: hsl(142 70% 28% / 0.4) !important; }
+.dark .bg-emerald-50     { background-color: hsl(160 70% 25% / 0.3) !important; }
+.dark .bg-amber-50       { background-color: hsl(38 80% 25% / 0.3) !important; }
+.dark .bg-amber-100      { background-color: hsl(38 80% 30% / 0.4) !important; }
+.dark .bg-yellow-50      { background-color: hsl(50 80% 25% / 0.3) !important; }
+.dark .bg-blue-50        { background-color: hsl(220 80% 25% / 0.4) !important; }
+.dark .bg-blue-100       { background-color: hsl(220 80% 30% / 0.45) !important; }
+.dark .bg-indigo-50      { background-color: hsl(230 70% 25% / 0.3) !important; }
+.dark .bg-purple-50      { background-color: hsl(270 70% 25% / 0.3) !important; }
+.dark .bg-pink-50        { background-color: hsl(330 70% 25% / 0.3) !important; }
+.dark .bg-teal-50        { background-color: hsl(180 70% 25% / 0.3) !important; }
+.dark .bg-cyan-50        { background-color: hsl(190 70% 25% / 0.3) !important; }
+.dark .bg-orange-50      { background-color: hsl(25 80% 25% / 0.3) !important; }
+.dark .bg-orange-100     { background-color: hsl(25 80% 30% / 0.4) !important; }
+.dark .bg-sky-50         { background-color: hsl(200 80% 20% / 0.4) !important; }
+.dark .bg-sky-100        { background-color: hsl(200 80% 25% / 0.5) !important; }
+.dark .bg-violet-50      { background-color: hsl(260 70% 25% / 0.35) !important; }
+.dark .bg-violet-100     { background-color: hsl(260 70% 30% / 0.45) !important; }
+.dark .bg-slate-100,
+.dark .bg-slate-200      { background-color: hsl(var(--card)) !important; }
+.dark .bg-slate-300      { background-color: hsl(var(--muted)) !important; }
+.dark .border-sky-100,
+.dark .border-sky-200,
+.dark .border-violet-100,
+.dark .border-violet-200,
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300  { border-color: hsl(var(--border)) !important; }
+.dark .text-sky-600,
+.dark .text-sky-700,
+.dark .text-sky-800      { color: hsl(200 80% 75%) !important; }
+.dark .text-violet-600,
+.dark .text-violet-700,
+.dark .text-violet-800   { color: hsl(260 75% 78%) !important; }
+.dark .text-slate-500,
+.dark .text-slate-600,
+.dark .text-slate-700    { color: hsl(var(--muted-foreground)) !important; }
+
+/* Text escuros em tons coloridos → versões claras no dark */
+.dark .text-red-700,
+.dark .text-red-800,
+.dark .text-red-900      { color: hsl(0 80% 75%) !important; }
+.dark .text-green-700,
+.dark .text-green-800,
+.dark .text-green-900    { color: hsl(142 60% 70%) !important; }
+.dark .text-emerald-700,
+.dark .text-emerald-800,
+.dark .text-emerald-900  { color: hsl(160 60% 70%) !important; }
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-amber-900    { color: hsl(38 80% 70%) !important; }
+.dark .text-yellow-700,
+.dark .text-yellow-800,
+.dark .text-yellow-900   { color: hsl(50 80% 70%) !important; }
+.dark .text-blue-700,
+.dark .text-blue-800,
+.dark .text-blue-900     { color: hsl(220 80% 75%) !important; }
+.dark .text-indigo-700,
+.dark .text-indigo-800,
+.dark .text-indigo-900   { color: hsl(230 70% 75%) !important; }
+.dark .text-purple-700,
+.dark .text-purple-800,
+.dark .text-purple-900   { color: hsl(270 70% 75%) !important; }
+.dark .text-pink-700,
+.dark .text-pink-800,
+.dark .text-pink-900     { color: hsl(330 70% 75%) !important; }
+.dark .text-teal-700,
+.dark .text-teal-800,
+.dark .text-teal-900     { color: hsl(180 70% 70%) !important; }
+.dark .text-cyan-700,
+.dark .text-cyan-800,
+.dark .text-cyan-900     { color: hsl(190 70% 70%) !important; }
+.dark .text-orange-700,
+.dark .text-orange-800,
+.dark .text-orange-900   { color: hsl(25 80% 72%) !important; }
+
+/* Rose/pink tones (usados em enfermagem) */
+.dark .bg-rose-50        { background-color: hsl(340 70% 25% / 0.3) !important; }
+.dark .bg-rose-100       { background-color: hsl(340 70% 30% / 0.4) !important; }
+.dark .bg-pink-100       { background-color: hsl(330 70% 30% / 0.4) !important; }
+.dark .bg-pink-200       { background-color: hsl(330 70% 35% / 0.5) !important; }
+.dark .text-rose-700,
+.dark .text-rose-800,
+.dark .text-rose-900     { color: hsl(340 75% 75%) !important; }
+.dark .border-rose-100,
+.dark .border-rose-200,
+.dark .border-pink-100,
+.dark .border-pink-200   { border-color: hsl(var(--border)) !important; }
+
+/* Fundos com opacidade usados em cards (check-in, marketing) */
+.dark .bg-white\/60,
+.dark .bg-white\/50      { background-color: hsl(var(--card) / 0.6) !important; }
+.dark .bg-slate-50\/60,
+.dark .bg-slate-50\/40,
+.dark .bg-slate-50\/50   { background-color: hsl(var(--muted) / 0.5) !important; }
+.dark .bg-red-50\/60,
+.dark .bg-red-50\/50     { background-color: hsl(0 62% 25% / 0.35) !important; }
+.dark .bg-blue-50\/30,
+.dark .bg-blue-50\/50    { background-color: hsl(220 80% 30% / 0.4) !important; }
+.dark .bg-green-50\/50   { background-color: hsl(142 70% 28% / 0.4) !important; }
+
+/* hover:bg-*-50 com opacidade */
+.dark .hover\:bg-blue-50\/30:hover,
+.dark .hover\:bg-blue-50\/50:hover,
+.dark .hover\:bg-blue-50:hover       { background-color: hsl(220 80% 30% / 0.3) !important; }
+.dark .hover\:bg-slate-50\/40:hover,
+.dark .hover\:bg-slate-50:hover      { background-color: hsl(var(--muted) / 0.5) !important; }
+
+/* Borders coloridas leves (red-100, red-200, slate-100 etc) */
+.dark .border-red-100,
+.dark .border-red-200    { border-color: hsl(0 62% 40% / 0.5) !important; }
+.dark .border-slate-100,
+.dark .border-slate-200  { border-color: hsl(var(--border)) !important; }
+.dark .hover\:border-blue-400:hover { border-color: hsl(var(--primary)) !important; }
+
+/* Gradientes que começam/terminam em branco ou cinza claro */
+.dark .from-white        { --tw-gradient-from: hsl(var(--card)) !important; }
+.dark .to-white          { --tw-gradient-to: hsl(var(--card)) !important; }
+.dark .via-white         { --tw-gradient-via: hsl(var(--card)) !important; }
+.dark .from-gray-50      { --tw-gradient-from: hsl(var(--muted)) !important; }
+.dark .from-slate-50     { --tw-gradient-from: hsl(var(--muted)) !important; }

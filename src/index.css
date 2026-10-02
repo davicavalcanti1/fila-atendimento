@@ -1,0 +1,20 @@
+/* Fila de Atendimento — folha de entrada.
+   O design vem do núcleo compartilhado em src/design/ (arquivos gerados,
+   não edite lá). Este arquivo só carrega o núcleo e guarda o que for
+   exclusivo deste app.
+
+   Para mudar token, raio, sombra ou cor: mexa em
+   imago-platform/packages/design/src/core.css e rode
+   `node packages/design/sync.mjs`. Mudar aqui faz o app divergir dos outros
+   cinco, que foi o problema que o núcleo veio resolver. */
+
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap');
+@import './design/core.css';
+@import './design/compat-dark.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Local: Fila de Atendimento ─────────────────────────────────────────────────────────
+   Nada específico até aqui. O que for exclusivo deste app entra abaixo. */

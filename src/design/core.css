@@ -1,0 +1,443 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   IMAGO DESIGN SYSTEM — núcleo compartilhado
+   ---------------------------------------------------------------------------
+   ARQUIVO GERADO. Não edite nas cópias dentro dos apps.
+   Fonte da verdade: imago-platform/packages/design/src/core.css
+   Para propagar:    node packages/design/sync.mjs
+
+   ── A regra ────────────────────────────────────────────────────────────────
+   Numa sala de laudos o entorno é neutro por protocolo: cor no entorno enviesa
+   o que o olho vê na imagem. O sistema herda a regra.
+
+       O CHROME É NEUTRO. A COR É SEMPRE INFORMAÇÃO.
+
+   Nenhum matiz é gasto em decoração. Todo matiz daqui carrega dado, e só três
+   famílias têm licença para existir:
+
+       ação       → --primary, e nada mais. Azul = "isto faz alguma coisa".
+       status     → success / warning / info / destructive.
+       modalidade → RM / TC / US / MG / DO / RX. Mesmo matiz em todos os apps.
+
+   Se um elemento não é ação, não é status e não é modalidade, ele é neutro.
+   Gradiente decorativo, card colorido "pra alegrar", ícone tingido por
+   enfeite: não entram. O neutro é o que faz a cor significar.
+
+   ── Tipografia ─────────────────────────────────────────────────────────────
+   Public Sans é o laço com a marca. O que se acrescenta é numeral tabular
+   obrigatório: estes produtos são horas, contagens, protocolos e IDs em
+   coluna. Numeral proporcional desalinha coluna, e coluna desalinhada em
+   recepção vira leitura errada. Ver .tnum.
+
+   ── Contraste ──────────────────────────────────────────────────────────────
+   Cada cor de status tem TRÊS papéis, porque uma cor só não serve aos três:
+
+       --x              superfície preenchida (badge/botão sólido)
+       --x-foreground   o texto POR CIMA dessa superfície
+       --x-text         a MESMA cor usada como texto/ícone sobre o fundo da
+                        página — precisa ser mais escura para atingir AA
+
+   Confundir os dois últimos foi o bug mais comum: âmbar #f59e0b com texto
+   branco dá 2.13:1, reprova AA com folga.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    /* ── Neutros — rampa calibrada, matiz 220 ──────────────────────────────
+       Fria de propósito: é temperatura de tela, não de papel. O canvas tem
+       tint; a superfície é branco puro. É o que separa card de fundo sem
+       precisar de borda — a folha sobre o negatoscópio. */
+    --background:        220 20% 97%;   /* o canvas */
+    --foreground:        220 20% 10%;   /* tinta */
+
+    --card:              0 0% 100%;     /* a superfície */
+    --card-foreground:   220 20% 10%;
+
+    --popover:           0 0% 100%;
+    --popover-foreground:220 20% 10%;
+
+    --secondary:         220 14% 94%;
+    --secondary-foreground: 220 15% 25%;
+
+    --muted:             220 14% 94%;
+    --muted-foreground:  220 10% 40%;
+
+    /* ── Ação — Imago Blue, e nada além ────────────────────────────────────
+       Este azul não decora. Onde ele aparece, algo acontece ao clicar. */
+    --primary:           220 80% 40%;   /* #144bb8 */
+    --primary-foreground:0 0% 100%;
+    --primary-hover:     220 80% 33%;
+
+    --accent:            220 60% 95%;   /* superfície tingida de ação */
+    --accent-foreground: 220 80% 32%;
+
+    /* ── Status ────────────────────────────────────────────────────────────
+       Valores auditados para AA. Ver o bloco de contraste no topo. */
+    --destructive:       0 72% 42%;     /* #b81e1e — branco por cima: 6.48:1 */
+    --destructive-foreground: 0 0% 100%;
+    --destructive-text:  0 72% 42%;     /* 6.31:1 como texto sobre o canvas */
+
+    --success:           142 72% 30%;
+    --success-foreground:0 0% 100%;
+    --success-text:      142 72% 26%;   /* mais escuro: passa sobre bg-success/10 */
+
+    --warning:           38 92% 50%;    /* âmbar fica âmbar; quem muda é o texto */
+    --warning-foreground:38 100% 12%;
+    --warning-text:      38 95% 30%;
+
+    --info:              200 90% 30%;   /* deslocado de 220: no valor antigo era
+                                           quase o primary e os papéis se confundiam */
+    --info-foreground:   0 0% 100%;
+    --info-text:         200 90% 30%;
+
+    /* ── Modalidade ────────────────────────────────────────────────────────
+       A rampa que amarra os produtos. Um chip violeta é Ressonância no Farol,
+       no totem de check-in, na TV e no sistema principal — sempre.
+
+       A rampa é por FAMÍLIA, não por id. O NetRis tem 16 ids de modalidade, e
+       16 categorias não se distinguem por matiz: o limite de cor categórica
+       fica em 7–8, e isso antes de reservar matiz para ação e status.
+
+       As 8 famílias não foram inventadas aqui — são as filas que o Farol já
+       opera. Então a cor significa "em qual farol este paciente está", que é
+       exatamente o que a recepção precisa ler de longe. O mapa id→família
+       vive no app, junto do enum MODALIDADE.
+
+       Famílias vizinhas em matiz são vizinhas de verdade, e isso é de
+       propósito: US/ECO são as duas ultrassonografias, TC/RM são os dois
+       cortes pesados, RX/DO são os dois de raio-X. Quem lê a lista vê o
+       agrupamento antes de ler o código.
+
+       Luminosidade 32–50%: branco por cima atinge ~4.9:1 ou mais em todas
+       (valores calculados, não medidos em tela). */
+    --modality-do:        25 78% 36%;   /* Densitometria  — terracota */
+    --modality-rx:        60 70% 32%;   /* Raio-X         — mostarda escura */
+    --modality-nc:        95 45% 34%;   /* Neurocardio    — oliva (traçados) */
+    /* Saturação baixa de propósito: 130 fica a 12° de --success (142), perto
+       demais para o matiz separar sozinho. O que separa é a saturação — sálvia
+       apagada contra verde vivo. Sem isso um rail de Eco leria como "ok". */
+    --modality-eco:      130 40% 34%;   /* Ecocardiograma — sálvia */
+    --modality-us:       165 65% 30%;   /* Ultrassom      — teal */
+    --modality-tc:       250 60% 50%;   /* Tomografia     — índigo */
+    --modality-rm:       285 55% 46%;   /* Ressonância    — violeta */
+    --modality-mg:       320 62% 45%;   /* Mamografia     — rosa */
+
+    /* Neutro para quem não pertence a farol nenhum (Anestesia) ou não veio
+       com modalidade. Cinza aqui É informação: diz "este paciente não está em
+       fila de imagem", e não "faltou dado". */
+    --modality-none:     220  8% 42%;
+    --modality-foreground: 0 0% 100%;
+
+    /* ── Categorias de ocorrência ──────────────────────────────────────────
+       administrativa era 262, encostada na Ressonância (265). Duas coisas
+       diferentes no mesmo matiz é exatamente o que a regra proíbe: movida
+       para 285. */
+    --occurrence-administrativa: 285 55% 48%;
+    --occurrence-revisao_exame:  220 80% 40%;
+    --occurrence-enfermagem:     168 65% 30%;
+
+    /* ── Contornos ─────────────────────────────────────────────────────────
+       --border é divisória decorativa (isenta de contraste mínimo).
+       --input é contorno de controle e precisa de 3:1 (WCAG 1.4.11) — por
+       isso é bem mais escuro do que a divisória, e não é engano. */
+    --border:            220 14% 89%;
+    --input:             220 10% 52%;
+    --ring:              220 80% 40%;
+
+    /* ── Tipografia ────────────────────────────────────────────────────────
+       Trocar de face = trocar estas linhas e o @import do app. */
+    --font-sans:  'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Literata', Georgia, 'Times New Roman', serif;
+
+    /* ── Raios — instrumento, não app de consumo ───────────────────────────
+       6px de base. O degrau é curto de propósito: painel de operação não
+       arredonda para parecer amigável, arredonda para não cortar. */
+    --radius:      0.375rem;   /* 6px  → botões, inputs, cards   (rounded-lg) */
+    --radius-xl:   0.5rem;     /* 8px  → tiles, painéis          (rounded-xl) */
+    --radius-2xl:  0.75rem;    /* 12px → superfícies maiores     (rounded-2xl) */
+
+    /* ── Sombras ───────────────────────────────────────────────────────────
+       O card se define por um anel de 1px, não por profundidade. A elevação
+       entra só no hover, onde ela informa que o elemento responde. */
+    --shadow-sm:         0 1px 2px 0 rgb(0 0 0 / 0.06);
+    --shadow-md:         0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.08);
+    --shadow-lg:         0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+    --shadow-card:       0 0 0 1px rgb(0 0 0 / 0.04), 0 1px 4px 0 rgb(0 0 0 / 0.08);
+    --shadow-card-hover: 0 0 0 1px rgb(0 0 0 / 0.06), 0 8px 20px -4px rgb(0 0 0 / 0.12);
+    --shadow-primary:    0 10px 20px -6px rgb(20 75 184 / 0.25);
+
+    /* ── Sidebar — navy corporativo, fixo nos dois temas ───────────────── */
+    --sidebar-background: 224 62% 16%;
+    --sidebar-foreground: 220 40% 88%;
+    --sidebar-primary: 220 80% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 60% 13%;
+    --sidebar-accent-foreground: 220 40% 88%;
+    --sidebar-border: 224 50% 18%;
+    --sidebar-ring: 220 80% 50%;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Dark mode
+     A rampa neutra mantém o matiz 220 do tema claro. Identidade fria num
+     tema e quente no outro seria o mesmo produto com duas temperaturas.
+     ═══════════════════════════════════════════════════════════════════════ */
+  .dark {
+    --background:        220 14% 8%;
+    --foreground:        220 10% 93%;
+
+    --card:              220 12% 12%;
+    --card-foreground:   220 10% 93%;
+
+    --popover:           220 12% 12%;
+    --popover-foreground:220 10% 93%;
+
+    --secondary:         220 10% 17%;
+    --secondary-foreground: 220 8% 80%;
+
+    --muted:             220 10% 15%;
+    --muted-foreground:  220 8% 63%;
+
+    --primary:           220 75% 62%;
+    /* Branco sobre o azul claro do dark dá 3.53:1 e reprova. Navy quase preto
+       dá 5.10:1 e preserva o azul vivo. */
+    --primary-foreground:222 55% 11%;
+    --primary-hover:     220 75% 70%;
+
+    --accent:            220 35% 22%;
+    --accent-foreground: 220 75% 80%;
+
+    /* No escuro a lógica inverte: a superfície é escura e a cor viva é o
+       texto. Estes tokens faltavam por completo — os valores do tema claro
+       vazavam para o escuro. */
+    --destructive:       0 60% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-text:  0 85% 72%;
+
+    --success:           142 55% 60%;
+    --success-foreground:142 80% 8%;
+    --success-text:      142 55% 60%;
+
+    --warning:            38 90% 60%;
+    --warning-foreground: 38 100% 8%;
+    --warning-text:       38 90% 60%;
+
+    --info:              200 80% 62%;
+    --info-foreground:   200 90% 8%;
+    --info-text:         200 80% 62%;
+
+    /* Modalidade clareada: os valores do claro somem sobre o card escuro.
+       Aqui o chip inverte — superfície clara, texto quase preto. */
+    --modality-do:        25 85% 62%;
+    --modality-rx:        60 60% 58%;
+    --modality-nc:        95 45% 60%;
+    --modality-eco:      130 38% 60%;   /* segue apagada; ver o claro */
+    --modality-us:       165 55% 55%;
+    --modality-tc:       250 85% 74%;
+    --modality-rm:       285 75% 72%;
+    --modality-mg:       320 75% 70%;
+    --modality-none:     220 10% 58%;
+    --modality-foreground: 220 30% 8%;
+
+    --occurrence-administrativa: 285 75% 76%;
+    --occurrence-revisao_exame:  220 75% 62%;
+    --occurrence-enfermagem:     168 60% 58%;
+
+    --border:            220 10% 20%;
+    --input:             220 8% 44%;
+    --ring:              220 75% 58%;
+
+    /* Sombra preta sobre fundo preto não existe. No escuro o relevo vem de um
+       anel de luz. Sem isto os cards ficam sem contorno nenhum. */
+    --shadow-sm:         0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-md:         0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+    --shadow-lg:         0 10px 15px -3px rgb(0 0 0 / 0.55), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+    --shadow-card:       0 0 0 1px rgb(255 255 255 / 0.06), 0 1px 4px 0 rgb(0 0 0 / 0.5);
+    --shadow-card-hover: 0 0 0 1px rgb(255 255 255 / 0.10), 0 8px 20px -4px rgb(0 0 0 / 0.6);
+    --shadow-primary:    0 10px 20px -6px rgb(20 75 184 / 0.45);
+
+    --sidebar-background: 220 12% 12%;
+    --sidebar-foreground: 220 8% 75%;
+    --sidebar-primary: 220 75% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 12% 10%;
+    --sidebar-accent-foreground: 220 8% 75%;
+    --sidebar-border: 220 10% 17%;
+    --sidebar-ring: 220 75% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+
+  /* Numeral tabular onde há coluna de dado. Hora, contagem, protocolo e ID
+     alinham por padrão; não depende de alguém lembrar de aplicar a classe. */
+  table, time, [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* O spinner do input numérico não é informação — é ruído em formulário de
+     recepção, onde o valor é digitado, nunca incrementado de 1 em 1. */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Piso de qualidade: foco sempre visível, movimento sempre negociável. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .shadow-card       { box-shadow: var(--shadow-card); }
+  .shadow-card-hover { box-shadow: var(--shadow-card-hover); }
+  .shadow-primary-glow { box-shadow: var(--shadow-primary); }
+
+  /* Numeral tabular sob demanda, para onde o seletor de base não alcança. */
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
+  }
+}
+
+@layer components {
+  /* ═══════════════════════════════════════════════════════════════════════
+     .rail — o elemento de assinatura do sistema
+     ---------------------------------------------------------------------
+     Uma barra de 3px na aresta de entrada da linha ou do card, na cor da
+     informação que aquela linha carrega. É a aplicação literal da regra: o
+     card é neutro, e o único matiz nele é o dado.
+
+     Funciona porque é lido antes do texto. Numa lista de 40 exames a
+     recepcionista vê a distribuição de modalidades antes de ler uma palavra.
+     Engorda no hover — a resposta ao ponteiro é a própria informação ficando
+     mais forte, não um efeito à parte.
+
+         <div class="rail rail-rm"> … </div>
+         <tr class="rail rail-status-warning"> … </tr>
+     ═══════════════════════════════════════════════════════════════════════ */
+  .rail {
+    @apply relative overflow-hidden;
+  }
+  .rail::before {
+    content: '';
+    @apply absolute left-0 top-0 h-full transition-[width] duration-150 ease-out;
+    width: var(--rail-width, 3px);
+    background: var(--rail-color, hsl(var(--border)));
+  }
+  .rail:hover::before { width: var(--rail-width-hover, 5px); }
+
+  /* A espessura acompanha a distância de leitura. 3px resolve numa lista a
+     um braço de distância e some numa TV vista do outro lado da recepção —
+     onde a cor é justamente o que se enxerga antes do texto. */
+  .rail-lg { --rail-width: 10px; --rail-width-hover: 10px; }
+
+  .rail-do   { --rail-color: hsl(var(--modality-do)); }
+  .rail-rx   { --rail-color: hsl(var(--modality-rx)); }
+  .rail-nc   { --rail-color: hsl(var(--modality-nc)); }
+  .rail-eco  { --rail-color: hsl(var(--modality-eco)); }
+  .rail-us   { --rail-color: hsl(var(--modality-us)); }
+  .rail-tc   { --rail-color: hsl(var(--modality-tc)); }
+  .rail-rm   { --rail-color: hsl(var(--modality-rm)); }
+  .rail-mg   { --rail-color: hsl(var(--modality-mg)); }
+  .rail-none { --rail-color: hsl(var(--modality-none)); }
+
+  .rail-status-success     { --rail-color: hsl(var(--success)); }
+  .rail-status-warning     { --rail-color: hsl(var(--warning)); }
+  .rail-status-info        { --rail-color: hsl(var(--info)); }
+  .rail-status-destructive { --rail-color: hsl(var(--destructive)); }
+  .rail-primary            { --rail-color: hsl(var(--primary)); }
+
+  .rail-administrativa { --rail-color: hsl(var(--occurrence-administrativa)); }
+  .rail-revisao_exame  { --rail-color: hsl(var(--occurrence-revisao_exame)); }
+  .rail-enfermagem     { --rail-color: hsl(var(--occurrence-enfermagem)); }
+
+  /* ── Chip de modalidade ────────────────────────────────────────────────
+     O código de duas letras é o que a equipe lê primeiro; a cor é o agrupamento
+     à distância. Por isso o código vem sempre, e a cor nunca vem sozinha —
+     chip colorido sem texto seria informação só para quem enxerga cor. */
+  .chip-modality {
+    @apply inline-flex items-center justify-center rounded px-1.5 py-0.5
+           text-[11px] font-bold uppercase tracking-wider;
+    letter-spacing: 0.08em;
+    background: var(--chip-color);
+    color: hsl(var(--modality-foreground));
+  }
+  .chip-do   { --chip-color: hsl(var(--modality-do)); }
+  .chip-rx   { --chip-color: hsl(var(--modality-rx)); }
+  .chip-nc   { --chip-color: hsl(var(--modality-nc)); }
+  .chip-eco  { --chip-color: hsl(var(--modality-eco)); }
+  .chip-us   { --chip-color: hsl(var(--modality-us)); }
+  .chip-tc   { --chip-color: hsl(var(--modality-tc)); }
+  .chip-rm   { --chip-color: hsl(var(--modality-rm)); }
+  .chip-mg   { --chip-color: hsl(var(--modality-mg)); }
+  .chip-none { --chip-color: hsl(var(--modality-none)); }
+
+  /* ── Card de ocorrência ────────────────────────────────────────────────
+     Mantido: é .rail com passado. Novos usos devem preferir .rail. */
+  .occurrence-card {
+    @apply relative overflow-hidden rounded-lg border border-border bg-card p-5
+           transition-colors duration-200 ease-in-out cursor-pointer;
+  }
+  .occurrence-card:hover  { @apply border-primary/30 bg-muted/40; }
+  .occurrence-card::before {
+    content: '';
+    @apply absolute left-0 top-0 h-full w-1 transition-all duration-200;
+  }
+  .occurrence-card:hover::before { @apply w-1.5; }
+  .occurrence-card.revisao_exame::before  { background: hsl(var(--occurrence-revisao_exame)); }
+  .occurrence-card.enfermagem::before     { background: hsl(var(--occurrence-enfermagem)); }
+  .occurrence-card.administrativa::before { background: hsl(var(--occurrence-administrativa)); }
+
+  .top-nav {
+    @apply sticky top-0 z-50 w-full border-b border-border bg-background;
+  }
+
+  /* ── Eyebrow ───────────────────────────────────────────────────────────
+     Rótulo de campo, não chamada de marketing. Fica em tinta e não em azul:
+     azul é ação, e um rótulo não faz nada ao ser clicado. */
+  .eyebrow {
+    @apply text-[11px] font-bold uppercase text-foreground/70;
+    letter-spacing: 0.18em;
+  }
+  .eyebrow-muted {
+    @apply text-[10px] font-semibold uppercase text-muted-foreground;
+    letter-spacing: 0.14em;
+  }
+}
+
+/* ── Ticker do totem ─────────────────────────────────────────────────────
+   Uma direção, laço sem pausa. Vive no núcleo porque a TV da recepção é
+   superfície de três produtos (check-in, Farol e o sistema principal), e
+   nenhum deles é o dono dela.
+
+   A distância é passada pelo componente em --totem-ticker-dist, porque
+   depende da largura real do conteúdo medida em runtime. */
+@keyframes totem-ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(var(--totem-ticker-dist, -100%)); }
+}
