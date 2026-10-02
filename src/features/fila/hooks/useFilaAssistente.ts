@@ -344,6 +344,10 @@ export function useFilaAssistente({
 
   // ── Estado ──────────────────────────────────────────────────────────────────
   const [farolRows, setFarolRows]     = useState<FarolRow[]>([]);
+  // Para o indicador de sincronização: quando esta aba leu a fila pela última
+  // vez com sucesso, e se a tentativa mais recente falhou.
+  const [ultimaCargaTela, setUltimaCargaTela] = useState<Date | null>(null);
+  const [falhaCargaTela, setFalhaCargaTela]   = useState(false);
   const [overlays, setOverlays]       = useState<Map<string, FilaOverlay>>(new Map());
   const [state, setState]             = useState<AssistenteState>(EMPTY_STATE);
   const [loading, setLoading]         = useState(true);
@@ -430,13 +434,24 @@ export function useFilaAssistente({
   const loadFarol = useCallback(async () => {
     if (!tenantId) return;
     const sits = Array.from(new Set([...sitFila, ...SIT_AGENDADOS]));
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from("farol_timestamps")
       .select("atendimento_id,nome_paciente,cpf,modalidade_id,exame,medico,sala,hora_inicial_ms,situacao_id,situacao_nome,primeira_vez,telefone,data_nascimento,convenio")
       .eq("data_ref", todayBRT())
       .in("modalidade_id", modalidadeIds as readonly number[])
       .in("situacao_id", sits)
       .is("dispensed_at", null);
+    // Leitura que falhou NÃO é fila vazia. Antes o erro virava `[]` e a tela
+    // esvaziava em silêncio — rede instável parecia "ninguém aguardando". Agora
+    // a fila anterior fica na tela e o indicador do cabeçalho avisa.
+    if (error) {
+      logError("[fila] leitura do farol falhou:", error);
+      setFalhaCargaTela(true);
+      setLoading(false);
+      return;
+    }
+    setFalhaCargaTela(false);
+    setUltimaCargaTela(new Date());
     const rows = (data as FarolRow[]) ?? [];
     farolIdsRef.current = rows.map(r => r.atendimento_id);
     setFarolRows(rows);
@@ -1293,6 +1308,8 @@ export function useFilaAssistente({
     now,
     clockTime,
     assistenteList,
+    ultimaCargaTela,
+    falhaCargaTela,
     viewers,
     viewersPorMedico,
     alteracaoPendente,

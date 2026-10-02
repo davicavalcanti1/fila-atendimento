@@ -25,6 +25,7 @@ import {
 import { useEffect, useState } from "react";
 import { DialogMotivoAlteracao, CamposDeMotivo, motivoCompleto } from "../components/MotivoAlteracao";
 import { classePrioridade } from "../lib/prioridade";
+import { IndicadorSincronizacao, FaixaFilaDesatualizada } from "../components/IndicadorSincronizacao";
 
 export default function FilaAtendimentoAssistente() {
   const { profile, role } = useAuth();
@@ -58,6 +59,8 @@ export default function FilaAtendimentoAssistente() {
     now,
     clockTime,
     assistenteList,
+    ultimaCargaTela,
+    falhaCargaTela,
     viewers,
     viewersPorMedico,
     alteracaoPendente,
@@ -497,6 +500,7 @@ export default function FilaAtendimentoAssistente() {
           }
           actions={
             <>
+              <IndicadorSincronizacao tenantId={tenantId} telaEm={ultimaCargaTela} telaFalhou={falhaCargaTela} />
               {/* Relógio aqui e não na barra: embutida no sistema a barra some,
                   e na fila a hora é instrumento de trabalho. Os segundos vão
                   menores e apagados — provam que a tela está viva, mas ninguém
@@ -515,6 +519,8 @@ export default function FilaAtendimentoAssistente() {
             </>
           }
         />
+
+        <FaixaFilaDesatualizada tenantId={tenantId} telaFalhou={falhaCargaTela} />
 
         {readOnly && (
           <div className="panel flex items-center gap-3 px-4 py-2.5 border-l-[3px] border-l-warning">

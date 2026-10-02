@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePresencaFila } from "../hooks/usePresencaFila";
+import { IndicadorSincronizacao, FaixaFilaDesatualizada } from "../components/IndicadorSincronizacao";
 import { hojeBRT } from "@/lib/dataBRT";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -202,6 +203,7 @@ function FilaHub() {
           subtitle="Pacientes encaminhados para exame agora, por modalidade"
           actions={
             <>
+              {tenantId && <IndicadorSincronizacao tenantId={tenantId} />}
               {total !== null && (
                 <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-sm border border-border bg-card">
                   <span className="font-mono text-sm font-bold text-foreground">{total}</span>
@@ -214,6 +216,8 @@ function FilaHub() {
             </>
           }
         />
+
+        {tenantId && <FaixaFilaDesatualizada tenantId={tenantId} />}
 
         {tenantId && (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3" key={tick}>
