@@ -70,13 +70,13 @@ export default function Login() {
     <div className="min-h-screen grid place-items-center bg-background p-6 font-sans">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <span className="inline-grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="inline-grid h-12 w-12 place-items-center rounded-sm bg-primary/10 text-primary ring-1 ring-primary/30">
             <ListOrdered className="h-6 w-6" />
           </span>
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Fila de Atendimento</h1>
+          <h1 className="text-2xl font-extrabold uppercase tracking-[0.22em] text-foreground">Fila</h1>
           <p className="text-sm text-muted-foreground">Entre com sua conta para continuar</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border border-border bg-card p-5 shadow-card">
+        <form onSubmit={handleSubmit} className="space-y-3 panel p-5">
           <Input
             /* `text` e não `email`: com type="email" o próprio navegador recusa
                "nome.sobrenome" antes de o formulário chegar aqui — era metade do

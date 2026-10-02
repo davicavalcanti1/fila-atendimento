@@ -115,10 +115,10 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5 text-blue-600" />
+            <User className="h-5 w-5 text-muted-foreground" />
             <span className="text-lg">{principal.nome_paciente}</span>
             {algumaPrio && (
-              <Badge className="bg-red-50 text-red-700 border-red-200 ml-1">
+              <Badge className="ml-1 rounded-sm bg-destructive/10 text-destructive-strong border-destructive/30 uppercase tracking-wider text-[10px]">
                 {PRIO_LABEL[algumaPrio.prioridade ?? "normal"]}
               </Badge>
             )}
@@ -136,7 +136,7 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
 
         {/* ── Lista de exames do dia ─────────────────────────────────────── */}
         <section className="mt-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 mb-2">
+          <h3 className="console-label flex items-center gap-1.5 mb-2">
             <ListChecks className="h-3.5 w-3.5" />
             {atendimentos.length === 1 ? "Exame" : `Exames (${atendimentos.length})`}
           </h3>
@@ -144,10 +144,10 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
             {atendimentos.map(a => {
               const hist = historico.get(a.atendimento_id);
               return (
-                <div key={a.atendimento_id} className="rounded-lg border border-border bg-muted/30 p-3">
+                <div key={a.atendimento_id} className="panel p-3">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <p className="font-semibold text-foreground">{a.exame || "—"}</p>
-                    <span className="text-xs font-mono bg-card border border-border rounded px-1.5 py-0.5 text-foreground">
+                    <span className="font-mono text-sm font-bold text-foreground shrink-0">
                       {formatHoraMs(a.hora_inicial_ms)}
                     </span>
                   </div>
@@ -158,8 +158,8 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
                     </div>
                     {a.medico_original && a.medico_original !== a.medico && (
                       <div className="flex items-center gap-1.5">
-                        <ArrowRightLeft className="h-3 w-3 text-blue-500" />
-                        Originalmente: <span className="text-blue-700">{a.medico_original}</span>
+                        <ArrowRightLeft className="h-3 w-3 text-primary" />
+                        Originalmente: <span className="text-primary">{a.medico_original}</span>
                       </div>
                     )}
                     <div>Sala (NetRis): <strong className="text-foreground">{a.sala || "—"}</strong></div>
@@ -171,7 +171,7 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3 w-3" />
                       Entrada na fila:{" "}
-                      <strong className="text-foreground">
+                      <strong className="font-mono text-foreground">
                         {format(parseISO(a.primeira_vez), "HH:mm:ss", { locale: ptBR })}
                       </strong>
                     </div>
@@ -179,7 +179,7 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
                       <div className="flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
                         Última atualização:{" "}
-                        <strong className="text-foreground">
+                        <strong className="font-mono text-foreground">
                           {format(parseISO(hist.ultima_vez), "HH:mm:ss", { locale: ptBR })}
                         </strong>
                       </div>
@@ -187,14 +187,14 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
                   </div>
 
                   {a.observacoes && (
-                    <div className="mt-2 text-xs bg-amber-50 border-l-2 border-amber-300 text-amber-900 rounded-r px-2 py-1 italic">
+                    <div className="mt-2 text-xs border-l-2 border-warning bg-warning/10 text-foreground px-2 py-1">
                       <FileText className="h-3 w-3 inline mr-1" />
                       {a.observacoes}
                     </div>
                   )}
 
                   {a.hasOverride && a.transferred_by_name && a.transferred_at && (
-                    <div className="mt-2 text-[11px] text-blue-700 flex items-center gap-1">
+                    <div className="mt-2 text-[11px] text-primary flex items-center gap-1">
                       <ArrowRightLeft className="h-3 w-3" />
                       Transferido por <strong>{a.transferred_by_name}</strong> às{" "}
                       {format(parseISO(a.transferred_at), "HH:mm", { locale: ptBR })}
@@ -207,7 +207,7 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
         </section>
 
         {(principal.telefone == null && principal.data_nascimento == null && principal.convenio == null) && (
-          <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+          <p className="mt-3 text-xs text-warning-strong bg-warning/10 border border-warning/40 rounded-sm px-2 py-1.5">
             Telefone, idade e convênio só ficam disponíveis após o redeploy da edge function
             <code className="mx-1 px-1 bg-card rounded border">poll-farol-timestamps</code>.
           </p>
@@ -219,8 +219,8 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
 
 function Field({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 bg-muted/30 border border-border rounded-lg px-3 py-2">
-      <span className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+    <div className="flex flex-col gap-1 bg-muted/40 rounded-sm px-3 py-2">
+      <span className="console-label flex items-center gap-1">
         {icon}
         {label}
       </span>

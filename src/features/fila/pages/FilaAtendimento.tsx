@@ -5,7 +5,9 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/shared/contexts/AuthContext";
 import { SITUACAO } from "@/services/netris/client";
-import { ListOrdered, Users, ChevronRight, RefreshCw, Stethoscope } from "lucide-react";
+import { ArrowRight, RefreshCw, Stethoscope } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import FilaAtendimentoAssistente from "./FilaAtendimentoAssistente";
 
@@ -38,6 +40,43 @@ export function todayBRT(): string {
   return hojeBRT();
 }
 
+/** Código curto de cada fila — o mesmo que o Farol usa no card da modalidade. */
+export const CODIGO_FILA: Record<string, string> = {
+  ultrassom: "US", radiografia: "RX", tomografia: "TC", mamografia: "MG",
+  densitometria: "DO", ressonancia: "RM", ecocardiograma: "ECO", neurocardio: "NC",
+};
+
+/**
+ * Classe do LED por faixa, ESCRITA POR EXTENSO. Montar `lamp-${faixa}` por
+ * template parece equivalente e não é: o Tailwind só mantém no CSS a classe
+ * que encontra literal no código, e `.lamp-warn`/`.lamp-crit` sumiam do build —
+ * todo LED aceso saía cinza.
+ */
+export const LAMP: Record<"ok" | "warn" | "crit", string> = {
+  ok: "lamp-ok", warn: "lamp-warn", crit: "lamp-crit",
+};
+
+/** Mesmos cortes do LED do Farol (statusAgendado.faixaDaEspera). */
+export function faixaDaEspera(min: number): "ok" | "warn" | "crit" {
+  if (min >= 60) return "crit";
+  if (min >= 30) return "warn";
+  return "ok";
+}
+
+export function fmtTempo(min: number) {
+  if (min < 1) return "0m";
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
+}
+
+/**
+ * A espera aqui conta da entrada na fila (`primeira_vez`), que é a MESMA conta
+ * do card do paciente dentro da fila (`differenceInMinutes(now, chegouEmMin)`).
+ * O Farol passou a contar "do mais tarde entre chegada e agendado" em 21/09;
+ * trazer essa regra para cá é decisão de comportamento, não de visual, e se
+ * vier tem que vir para os dois lugares desta tela de uma vez.
+ */
 function ModalidadeCard({
   slug, label, modalidadeIds, situacaoIds,
 }: {
@@ -47,17 +86,24 @@ function ModalidadeCard({
   situacaoIds: readonly number[];
 }) {
   const navigate = useNavigate();
-  const [count, setCount] = useState<number | null>(null);
+  const [esperas, setEsperas] = useState<number[] | null>(null);
 
   const load = useCallback(() => {
     (supabase as any)
       .from("farol_timestamps")
-      .select("atendimento_id", { count: "exact", head: true })
+      .select("primeira_vez")
       .eq("data_ref", todayBRT())
       .in("modalidade_id", modalidadeIds)
       .in("situacao_id", situacaoIds)
       .is("dispensed_at", null)
-      .then(({ count: c }: { count: number | null }) => setCount(c ?? 0));
+      .then(({ data }: { data: Array<{ primeira_vez: string }> | null }) => {
+        const agora = Date.now();
+        setEsperas(
+          (data ?? [])
+            .map(r => Math.max(0, Math.floor((agora - new Date(r.primeira_vez).getTime()) / 60_000)))
+            .sort((a, b) => b - a),
+        );
+      });
   }, [modalidadeIds.join(","), situacaoIds.join(",")]);
 
   useEffect(() => {
@@ -66,33 +112,74 @@ function ModalidadeCard({
     return () => clearInterval(t);
   }, [load]);
 
+  const total = esperas?.length ?? 0;
+  const maior = esperas?.[0] ?? 0;
+  const vazio = esperas !== null && total === 0;
+  const estado = vazio ? "ok" : faixaDaEspera(maior);
+
   return (
     <button
       onClick={() => navigate(`/fila-atendimento/${slug}`)}
-      className="group w-full bg-card border border-border rounded-2xl p-5 text-left hover:border-primary/50 hover:shadow-card-hover transition-all flex flex-col gap-3"
+      className={cn(
+        "panel panel-hover group w-full text-left flex flex-col overflow-hidden",
+        vazio && "opacity-70 hover:opacity-100",
+      )}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted group-hover:bg-primary/10 transition-colors">
-          <ListOrdered className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+      <div className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-3">
+        <div className="min-w-0 flex items-baseline gap-2">
+          <span className="font-mono text-sm font-bold tracking-[0.12em] text-foreground/90">
+            {CODIGO_FILA[slug] ?? slug.slice(0, 2).toUpperCase()}
+          </span>
+          <h3 className="text-[13px] font-semibold text-muted-foreground leading-tight truncate">{label}</h3>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors mt-1" />
+        {esperas !== null && (
+          <span
+            className={cn("lamp h-2.5 w-2.5 shrink-0 mt-1", LAMP[estado])}
+            title={vazio ? "Fila vazia" : `Maior espera: ${fmtTempo(maior)}`}
+          />
+        )}
       </div>
 
-      <div>
-        <p className="font-bold text-foreground text-sm leading-tight">{label}</p>
-        {count === null ? (
-          <p className="text-xs text-muted-foreground mt-1">Carregando…</p>
-        ) : (
-          <p className={`text-xs mt-1 font-semibold ${count > 0 ? "text-primary" : "text-muted-foreground"}`}>
-            {count === 0 ? "Fila vazia" : `${count} paciente${count !== 1 ? "s" : ""} aguardando`}
+      <div className="grid grid-cols-2 gap-2 px-4 pb-3">
+        <div>
+          <p className="readout text-[2rem] md:text-[2.5rem] text-foreground">
+            {esperas === null ? "…" : total}
           </p>
+          <p className="console-label mt-1">na fila</p>
+        </div>
+        <div>
+          <p className={cn(
+            "readout text-[2rem] md:text-[2.5rem]",
+            vazio || esperas === null ? "text-muted-foreground" :
+            maior >= 60 ? "text-destructive-strong" : maior >= 30 ? "text-warning-strong" : "text-foreground",
+          )}>
+            {esperas === null || vazio ? "—" : fmtTempo(maior)}
+          </p>
+          <p className="console-label mt-1">maior espera</p>
+        </div>
+      </div>
+
+      {/* Um bloco por paciente, colorido pela espera dele: "a fila está
+          inteira no vermelho ou é um caso só?", que os números não separam. */}
+      <div className="px-4 pb-3 min-h-[0.375rem]" title="Um bloco por paciente, colorido pelo tempo de espera">
+        {!vazio && esperas && (
+          <div className="spectrum">
+            {esperas.map((m, i) => <i key={i} data-led={faixaDaEspera(m)} />)}
+          </div>
         )}
+      </div>
+
+      <div className="mt-auto border-t border-border/70 px-4 py-2 flex items-center justify-between bg-background/40">
+        <span className="console-label">{vazio ? "Fila vazia" : "Sincronizada com o Farol"}</span>
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-primary">
+          Abrir <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+        </span>
       </div>
     </button>
   );
 }
 
-// Hub de modalidades (UI atual — supervisor/admin/recepcao).
+// Hub de modalidades (supervisor/admin/recepcao).
 function FilaHub() {
   const { profile, role } = useAuth();
   const navigate = useNavigate();
@@ -193,39 +280,28 @@ function FilaHub() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 p-4 md:p-6 animate-in fade-in duration-300">
+      <div className="space-y-4 animate-fade-in">
+        <PageHeader
+          eyebrow="Recepção"
+          title="Filas"
+          subtitle="Pacientes encaminhados para exame agora, por modalidade"
+          actions={
+            <>
+              {total !== null && (
+                <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-sm border border-border bg-card">
+                  <span className="font-mono text-sm font-bold text-foreground">{total}</span>
+                  <span className="console-label">no total</span>
+                </span>
+              )}
+              <Button variant="outline" size="sm" className="h-8 text-[11px] font-bold uppercase tracking-wider gap-1.5" onClick={() => setTick(t => t + 1)}>
+                <RefreshCw className="h-3.5 w-3.5" /> Atualizar
+              </Button>
+            </>
+          }
+        />
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-              <ListOrdered className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">Fila de Atendimento</h1>
-              <p className="text-sm text-muted-foreground">
-                Sincronizada com o Farol · Selecione a modalidade
-              </p>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setTick(t => t + 1)}>
-            <RefreshCw className="h-4 w-4 mr-1.5" /> Atualizar
-          </Button>
-        </div>
-
-        {/* Resumo total */}
-        {total !== null && total > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-3">
-            <Users className="h-4 w-4 text-muted-foreground/60" />
-            <span>
-              <strong className="text-foreground">{total}</strong> paciente{total !== 1 ? "s" : ""} no total em todas as filas
-            </span>
-          </div>
-        )}
-
-        {/* Grid de modalidades */}
         {tenantId && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" key={tick}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3" key={tick}>
             {FILA_MODALIDADES.map(m => (
               <ModalidadeCard
                 key={m.slug}
@@ -240,31 +316,21 @@ function FilaHub() {
 
         {/* Assistentes ATIVOS — só pra supervisor/admin/dev */}
         {canSeeAssistentes && (
-          <div className="rounded-2xl border border-border bg-card p-4 md:p-5">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Stethoscope className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-foreground">
-                    Assistentes ativos hoje
-                    <span className="ml-2 text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 align-middle">
-                      {assistentes.length}
-                    </span>
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    Quem fez ao menos uma seleção hoje. Clique para abrir a fila do assistente em modo leitura.
-                  </p>
-                </div>
+          <section className="panel overflow-hidden">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/70">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Stethoscope className="h-4 w-4 text-muted-foreground shrink-0" />
+                <h2 className="text-sm font-bold text-foreground">Assistentes ativos hoje</h2>
+                <span className="font-mono text-xs font-bold text-foreground/80">{assistentes.length}</span>
               </div>
+              <span className="console-label hidden sm:block">Clique para ver a fila do assistente em modo leitura</span>
             </div>
             {assistentes.length === 0 ? (
-              <p className="text-sm text-slate-400">
+              <p className="px-4 py-4 text-sm text-muted-foreground">
                 Nenhum assistente ativo no momento. Aparecem aqui assim que selecionarem médicos no painel.
               </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {assistentes.map(a => {
                   const updatedHHMM = new Intl.DateTimeFormat("pt-BR", {
                     timeZone: "America/Sao_Paulo",
@@ -272,25 +338,22 @@ function FilaHub() {
                   }).format(new Date(a.updated_at));
                   const nome = a.full_name || a.email || a.id.slice(0, 8);
                   return (
-                    <button
-                      key={a.id}
-                      onClick={() => navigate(`/fila-atendimento?as=${a.id}`)}
-                      className="text-left rounded-xl border border-cyan-200 bg-cyan-50/60 hover:bg-cyan-50 hover:border-cyan-300 px-3 py-2.5 transition group"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-cyan-900 text-sm truncate">{nome}</span>
-                        <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Ativo hoje" />
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-cyan-700 mt-1">
-                        <span>{a.medicos_count} médico{a.medicos_count !== 1 ? "s" : ""}</span>
-                        <span className="font-mono">{updatedHHMM}</span>
-                      </div>
-                    </button>
+                    <li key={a.id}>
+                      <button
+                        onClick={() => navigate(`/fila-atendimento?as=${a.id}`)}
+                        className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 hover:bg-muted/60 transition-colors"
+                      >
+                        <span className="lamp lamp-ok h-1.5 w-1.5 shrink-0" title="Ativo hoje" />
+                        <span className="flex-1 min-w-0 truncate text-sm font-semibold text-foreground">{nome}</span>
+                        <span className="console-label shrink-0">{a.medicos_count} méd.</span>
+                        <span className="font-mono text-[11px] text-muted-foreground shrink-0">{updatedHHMM}</span>
+                      </button>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             )}
-          </div>
+          </section>
         )}
       </div>
     </MainLayout>
