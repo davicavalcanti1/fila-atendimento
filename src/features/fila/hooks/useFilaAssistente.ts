@@ -208,6 +208,15 @@ function filtrarPorModalidade(lista: GroupedCard[], modalidadeId: number): Group
   return out;
 }
 
+// Mesmo conjunto de atendimentos, em qualquer ordem (a leitura do Farol não
+// tem ORDER BY, então a ordem pode variar entre duas leituras iguais).
+export function mesmosIds(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  const s = new Set(a);
+  if (s.size !== a.length) return false;
+  return b.every(id => s.has(id));
+}
+
 // Escopo de uma lista linear -> "linear" (fila única) ou "linear-neuro-<modId>".
 const SCOPE_NEURO = /^linear-neuro-(\d+)$/;
 
@@ -462,7 +471,12 @@ export function useFilaAssistente({
     setOverlays(m);
   }, [tenantId]);
 
-  const loadFarol = useCallback(async () => {
+  // `overlays: "seMudou"` (avisos do Realtime do Farol) só relê a Fila se a lista
+  // de atendimentos mudou. Antes todo aviso do Farol relia também a Fila, e a
+  // Fila chegou a 6,5× as consultas de agosto (out/2026). Posição e prioridade
+  // mudam pelo canal da própria Fila, que continua relendo; a recarga de 30 s
+  // e as demais chamadas seguem relendo sempre (padrão "sempre").
+  const loadFarol = useCallback(async (opcoes?: { overlays?: "sempre" | "seMudou" }) => {
     if (!tenantId) return;
     const sits = Array.from(new Set([...sitFila, ...SIT_AGENDADOS]));
     const { data, error } = await (supabase as any)
@@ -484,9 +498,11 @@ export function useFilaAssistente({
     setFalhaCargaTela(false);
     setUltimaCargaTela(new Date());
     const rows = (data as FarolRow[]) ?? [];
+    const idsAntes = farolIdsRef.current;
     farolIdsRef.current = rows.map(r => r.atendimento_id);
     setFarolRows(rows);
     setLoading(false);
+    if (opcoes?.overlays === "seMudou" && mesmosIds(idsAntes, farolIdsRef.current)) return;
     // Encadeado: os overlays dependem dos ids do farol, então recarregar a lista
     // sem recarregar as posições deixaria a fila fora de ordem por um instante.
     await fetchOverlays(farolIdsRef.current);
