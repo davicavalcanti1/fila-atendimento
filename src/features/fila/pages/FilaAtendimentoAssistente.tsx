@@ -27,6 +27,7 @@ import { DialogMotivoAlteracao, CamposDeMotivo, motivoCompleto } from "../compon
 import { classePrioridade } from "../lib/prioridade";
 import { DivisaoMedicosHoje } from "../components/DivisaoMedicosHoje";
 import { IndicadorSincronizacao, FaixaFilaDesatualizada } from "../components/IndicadorSincronizacao";
+import { agruparChamadas } from "@/lib/agruparChamadas";
 
 export default function FilaAtendimentoAssistente() {
   const { profile, role } = useAuth();
@@ -131,12 +132,28 @@ export default function FilaAtendimentoAssistente() {
     loadAssistentes();
     let divisaoTimer: ReturnType<typeof setTimeout> | null = null;
 
+    // Avisos do Realtime chegam em rajada: o poll do Farol regrava várias linhas
+    // de uma vez e arrastar um card reordena várias posições. Um aviso = uma
+    // recarga derrubou o banco em 30/out (2.552 consultas em 10 s). Agrupados,
+    // a rajada vira UMA recarga até 1,5 s depois do primeiro aviso.
+    // O Farol só relê a Fila se a lista de pacientes mudou ("seMudou"): mudança
+    // de posição/prioridade chega pelo canal da própria Fila.
+    const recargaFarol    = agruparChamadas(() => loadFarol({ overlays: "seMudou" }), 1_500);
+    const recargaOverlays = agruparChamadas(() => loadOverlays(), 1_500);
+    const minhasModalidades = new Set<number>(mod.modalidadeIds as readonly number[]);
+
     farolChannelRef.current = supabase
       .channel(`assist-farol-${tenantId}`)
       .on("postgres_changes" as any, {
         event: "*", schema: "public", table: "farol_timestamps",
         filter: `tenant_id=eq.${tenantId}`,
-      }, () => loadFarol())
+      }, (payload: any) => {
+        // Paciente de outra modalidade não muda esta tela. Exclusão chega só com
+        // a chave (replica identity padrão), sem modalidade: aí recarrega.
+        const modId = payload?.new?.modalidade_id ?? payload?.old?.modalidade_id;
+        if (modId != null && !minhasModalidades.has(Number(modId))) return;
+        recargaFarol.agendar();
+      })
       .subscribe();
 
     filaChannelRef.current = supabase
@@ -144,7 +161,7 @@ export default function FilaAtendimentoAssistente() {
       .on("postgres_changes" as any, {
         event: "*", schema: "public", table: "fila_atendimento",
         filter: `tenant_id=eq.${tenantId}`,
-      }, () => loadOverlays())
+      }, () => recargaOverlays.agendar())
       .subscribe();
 
     const modalidadeKey = mod.modalidadeIds[0];
@@ -164,8 +181,19 @@ export default function FilaAtendimentoAssistente() {
       })
       .subscribe();
 
-    const interval = setInterval(loadFarol, 30_000);
+    // Rede de segurança de 30 s (recarga completa, Farol + Fila). Aba escondida
+    // não recarrega: ninguém está olhando, e as TVs/abas esquecidas abertas
+    // somavam consultas o dia todo. Ao voltar a ficar visível, recarrega.
+    const interval = setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      loadFarol();
+    }, 30_000);
+    const aoVoltar = () => { if (document.visibilityState === "visible") recargaFarol.agendar(); };
+    document.addEventListener("visibilitychange", aoVoltar);
     return () => {
+      recargaFarol.cancelar();
+      recargaOverlays.cancelar();
+      document.removeEventListener("visibilitychange", aoVoltar);
       if (divisaoTimer) clearTimeout(divisaoTimer);
       if (farolChannelRef.current) supabase.removeChannel(farolChannelRef.current);
       if (filaChannelRef.current)  supabase.removeChannel(filaChannelRef.current);
