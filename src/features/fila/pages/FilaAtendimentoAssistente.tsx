@@ -272,7 +272,7 @@ export default function FilaAtendimentoAssistente() {
               <button
                 onClick={(e) => { e.stopPropagation(); aoEditar(g); }}
                 title="Editar prioridade & observações"
-                className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted"
+                className="p-1 max-lg:p-[13px] rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
@@ -280,7 +280,7 @@ export default function FilaAtendimentoAssistente() {
             <button
               onClick={(e) => { e.stopPropagation(); setDetalhesGroup(g); }}
               title="Ver detalhes"
-              className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted"
+              className="p-1 max-lg:p-[13px] rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <Info className="h-3.5 w-3.5" />
             </button>
@@ -417,7 +417,7 @@ export default function FilaAtendimentoAssistente() {
     return (
       <section className="panel overflow-hidden">
         {title && (
-          <div className="px-4 py-2.5 border-b border-border/70 flex items-center justify-between gap-3">
+          <div className="px-4 py-2.5 border-b border-border/70 flex items-center justify-between gap-3 max-lg:flex-wrap max-lg:gap-y-1">
             <div className="flex items-baseline gap-2 min-w-0">
               {opts?.codigo && (
                 <span className="font-mono text-sm font-bold tracking-[0.12em] text-foreground/90">{opts.codigo}</span>
@@ -475,7 +475,7 @@ export default function FilaAtendimentoAssistente() {
 
     return (
       <section key={col.id} className="panel overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-border/70 flex items-center justify-between gap-3">
+        <div className="px-4 py-2.5 border-b border-border/70 flex items-center justify-between gap-3 max-lg:flex-wrap max-lg:gap-y-1.5">
           <div className="min-w-0 flex items-center gap-2.5 flex-wrap">
             <Stethoscope className="h-4 w-4 text-muted-foreground shrink-0" />
             <p className="text-sm font-bold text-foreground truncate">{col.label}</p>
@@ -496,7 +496,7 @@ export default function FilaAtendimentoAssistente() {
                 variant="ghost" size="sm"
                 onClick={() => removerSala(col.salaId!)}
                 title="Remover esta sala"
-                className="h-7 px-2 gap-1 text-[11px] font-bold uppercase tracking-wider text-destructive-strong hover:text-destructive-strong hover:bg-destructive/10 shrink-0"
+                className="h-7 max-lg:h-10 px-2 gap-1 text-[11px] font-bold uppercase tracking-wider text-destructive-strong hover:text-destructive-strong hover:bg-destructive/10 shrink-0"
               >
                 <X className="h-3.5 w-3.5" /> Remover sala
               </Button>
@@ -505,7 +505,7 @@ export default function FilaAtendimentoAssistente() {
                 variant="ghost" size="sm"
                 onClick={() => duplicarMedico(col.medico)}
                 title="Duplicar (atendendo em outra sala)"
-                className="h-7 px-2 gap-1 text-[11px] font-bold uppercase tracking-wider text-primary hover:text-primary hover:bg-primary/10 shrink-0"
+                className="h-7 max-lg:h-10 px-2 gap-1 text-[11px] font-bold uppercase tracking-wider text-primary hover:text-primary hover:bg-primary/10 shrink-0"
               >
                 <Plus className="h-3.5 w-3.5" /> Outra sala
               </Button>
@@ -549,7 +549,7 @@ export default function FilaAtendimentoAssistente() {
               <Button
                 variant="outline" size="sm"
                 onClick={() => refresh(targetUserId)}
-                className="h-8 text-[11px] font-bold uppercase tracking-wider gap-1.5"
+                className="h-8 max-lg:h-10 text-[11px] font-bold uppercase tracking-wider gap-1.5"
               >
                 <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Atualizar
               </Button>
@@ -560,7 +560,7 @@ export default function FilaAtendimentoAssistente() {
         <FaixaFilaDesatualizada tenantId={tenantId} telaFalhou={falhaCargaTela} />
 
         {readOnly && (
-          <div className="panel flex items-center gap-3 px-4 py-2.5 border-l-[3px] border-l-warning">
+          <div className="panel flex items-center gap-3 px-4 py-2.5 border-l-[3px] border-l-warning max-lg:flex-wrap">
             <Eye className="h-4 w-4 text-warning-strong shrink-0" />
             <span className="text-sm text-foreground">
               {isPreview
@@ -570,7 +570,7 @@ export default function FilaAtendimentoAssistente() {
             {isPreview && (
               <Button
                 size="sm" variant="ghost"
-                className="ml-auto h-7 text-[11px] font-bold uppercase tracking-wider"
+                className="ml-auto h-7 max-lg:h-10 text-[11px] font-bold uppercase tracking-wider"
                 onClick={() => setSearchParams({})}
               >
                 Sair do preview
@@ -591,7 +591,7 @@ export default function FilaAtendimentoAssistente() {
                   <button
                     key={a.id}
                     onClick={() => setSearchParams({ as: a.id })}
-                    className="inline-flex items-center gap-1.5 h-6 px-2 rounded-sm border border-border bg-card text-xs text-foreground hover:border-primary/50 hover:text-primary transition-colors"
+                    className="inline-flex items-center gap-1.5 h-6 max-lg:h-10 px-2 max-lg:px-3 rounded-sm border border-border bg-card text-xs text-foreground hover:border-primary/50 hover:text-primary transition-colors"
                   >
                     <Eye className="h-3 w-3" />
                     {a.full_name || a.email || a.id.slice(0, 8)}
@@ -628,7 +628,7 @@ export default function FilaAtendimentoAssistente() {
                         aria-pressed={active}
                         title={outros.length > 0 ? `Também marcou este médico hoje: ${outros.map(v => v.nome).join(", ")}` : undefined}
                         className={cn(
-                          "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-sm border text-xs font-medium transition-colors",
+                          "inline-flex items-center gap-1.5 h-7 max-lg:h-10 px-2.5 max-lg:px-3 rounded-sm border text-xs font-medium transition-colors",
                           active
                             ? "bg-primary text-primary-foreground border-primary"
                             : "bg-card text-foreground border-border hover:border-primary/50 hover:text-primary",
@@ -707,7 +707,7 @@ export default function FilaAtendimentoAssistente() {
                       aria-pressed={active}
                       onClick={() => setEditPrioridade(key)}
                       className={cn(
-                        "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-sm border text-xs font-medium transition-colors",
+                        "inline-flex items-center gap-1.5 h-7 max-lg:h-10 px-2.5 max-lg:px-3 rounded-sm border text-xs font-medium transition-colors",
                         prioClasse,
                         active
                           ? (prioClasse ? "prio-chip" : "bg-foreground text-background border-foreground")
@@ -732,7 +732,7 @@ export default function FilaAtendimentoAssistente() {
                 onChange={(e) => setEditObs(e.target.value)}
                 placeholder="Notas internas sobre o paciente (sala, condição, contato, etc.)"
                 rows={4}
-                className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring"
+                className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm max-lg:text-base focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring"
               />
             </div>
             <CamposDeMotivo

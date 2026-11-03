@@ -230,12 +230,12 @@ function FilaHub() {
             <>
               {tenantId && <IndicadorSincronizacao tenantId={tenantId} />}
               {total !== null && (
-                <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-sm border border-border bg-card">
+                <span className="inline-flex items-center gap-1.5 h-8 max-lg:h-10 px-2.5 rounded-sm border border-border bg-card">
                   <span className="font-mono text-sm font-bold text-foreground">{total}</span>
                   <span className="console-label">no total</span>
                 </span>
               )}
-              <Button variant="outline" size="sm" className="h-8 text-[11px] font-bold uppercase tracking-wider gap-1.5" onClick={() => setTick(t => t + 1)}>
+              <Button variant="outline" size="sm" className="h-8 max-lg:h-10 text-[11px] font-bold uppercase tracking-wider gap-1.5" onClick={() => setTick(t => t + 1)}>
                 <RefreshCw className="h-3.5 w-3.5" /> Atualizar
               </Button>
             </>

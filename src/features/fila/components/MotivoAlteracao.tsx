@@ -46,7 +46,7 @@ export function CamposDeMotivo({ motivo, setMotivo, detalhe, setDetalhe, disable
                 disabled={disabled}
                 onClick={() => setMotivo(key)}
                 aria-pressed={active}
-                className={`inline-flex items-center h-7 px-2.5 rounded-sm border text-xs font-medium transition-colors ${
+                className={`inline-flex items-center h-7 max-lg:h-10 px-2.5 max-lg:px-3 rounded-sm border text-xs font-medium transition-colors ${
                   active
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-card text-foreground border-border hover:border-primary/50 hover:text-primary"
@@ -75,7 +75,7 @@ export function CamposDeMotivo({ motivo, setMotivo, detalhe, setDetalhe, disable
             disabled={disabled}
             rows={2}
             placeholder="Em uma frase, o que motivou esta alteração"
-            className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring disabled:opacity-50"
+            className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm max-lg:text-base focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring disabled:opacity-50"
           />
         </div>
       )}

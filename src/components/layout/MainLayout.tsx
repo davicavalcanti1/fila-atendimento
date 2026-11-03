@@ -46,7 +46,7 @@ export function MainLayout({ children, title, subtitle, eyebrow, headerActions }
   return (
     <div className="min-h-screen bg-background font-sans antialiased flex flex-col">
       {!embutido && (
-        <header className="h-12 shrink-0 border-b border-border bg-card/70 backdrop-blur flex items-center justify-between px-3 md:px-5">
+        <header className="h-12 max-lg:h-auto max-lg:min-h-12 max-lg:pt-[env(safe-area-inset-top)] shrink-0 border-b border-border bg-card/70 backdrop-blur flex items-center justify-between px-3 md:px-5">
           <button
             onClick={() => navigate("/fila-atendimento")}
             className="flex items-center gap-2 text-foreground group"
@@ -62,7 +62,7 @@ export function MainLayout({ children, title, subtitle, eyebrow, headerActions }
             </span>
             <Button
               variant="ghost" size="sm" onClick={signOut}
-              className="gap-1.5 text-muted-foreground h-8 px-2 text-xs"
+              className="gap-1.5 text-muted-foreground h-8 max-lg:h-10 px-2 max-lg:px-3 text-xs"
               title="Sair"
             >
               <LogOut className="h-3.5 w-3.5" /> <span className="hidden md:inline">Sair</span>
@@ -74,7 +74,7 @@ export function MainLayout({ children, title, subtitle, eyebrow, headerActions }
           estreita era o que mais a espremia no monitor da recepção. Respiro
           curto pelo mesmo motivo do Farol — cada pixel de margem é um pixel a
           menos de fila visível. */}
-      <main className="flex-1 overflow-y-auto px-3 py-4 md:px-5 md:py-5">{content}</main>
+      <main className="flex-1 overflow-y-auto px-3 py-4 md:px-5 md:py-5 max-lg:min-w-0 max-lg:pb-[calc(1rem+env(safe-area-inset-bottom))]">{content}</main>
     </div>
   );
 }

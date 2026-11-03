@@ -113,9 +113,9 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] max-lg:max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 max-lg:flex-wrap max-lg:pr-8 max-lg:break-words">
             <User className="h-5 w-5 text-muted-foreground" />
             <span className="text-lg">{principal.nome_paciente}</span>
             {algumaPrio && (
@@ -127,7 +127,7 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
         </DialogHeader>
 
         {/* ── Dados do paciente ──────────────────────────────────────────── */}
-        <section className="grid grid-cols-2 gap-3 text-sm">
+        <section className="grid grid-cols-2 max-sm:grid-cols-1 gap-3 text-sm">
           <Field icon={<User className="h-3.5 w-3.5" />} label="CPF" value={maskCpf(principal.cpf)} />
           <Field icon={<CalendarDays className="h-3.5 w-3.5" />} label="Idade"
                  value={idade !== null ? `${idade} anos` : "—"} />
@@ -147,12 +147,12 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
               return (
                 <div key={a.atendimento_id} className="panel p-3">
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <p className="font-semibold text-foreground">{a.exame || "—"}</p>
+                    <p className="font-semibold text-foreground max-lg:min-w-0 max-lg:break-words">{a.exame || "—"}</p>
                     <span className="font-mono text-sm font-bold text-foreground shrink-0">
                       {formatHoraMs(a.hora_inicial_ms)}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Stethoscope className="h-3 w-3 text-muted-foreground" />
                       Médico atual: <strong className="text-foreground">{a.medico || "—"}</strong>
@@ -168,7 +168,7 @@ export function PacienteDetalhesDialog({ open, onClose, atendimentos }: Props) {
                   </div>
 
                   {/* Timeline disponível: primeira_vez / ultima_vez */}
-                  <div className="mt-2 pt-2 border-t border-border grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                  <div className="mt-2 pt-2 border-t border-border grid grid-cols-2 max-sm:grid-cols-1 gap-2 text-[11px] text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3 w-3" />
                       Entrada na fila:{" "}
@@ -225,7 +225,7 @@ function Field({ icon, label, value }: { icon: React.ReactNode; label: string; v
         {icon}
         {label}
       </span>
-      <span className="text-sm font-semibold text-foreground">{value}</span>
+      <span className="text-sm font-semibold text-foreground max-lg:break-words">{value}</span>
     </div>
   );
 }

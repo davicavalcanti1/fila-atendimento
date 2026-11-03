@@ -1,5 +1,18 @@
 # Changelog — Fila de Atendimento
 
+## 0.1.2 — 03/nov/2026
+### Alterado
+- **Layout responsivo para celular e tablet (< 1024 px).** Só classes `max-lg:`/`max-sm:`
+  (Tailwind), então o PC (>= 1024 px) fica idêntico. Nada de lógica, dados ou textos mudou.
+  - Botões e chips (Atualizar, Sair, médicos, "Ver como", prioridade, motivo, Outra sala /
+    Remover sala, editar/detalhes do card) com alvo de toque de 40 px.
+  - Cabeçalho da página, cabeçalho de cada médico/lista e aviso de modo leitura quebram linha
+    em vez de estourar a largura.
+  - Diálogos cabem na tela (largura 100vw − 2 rem, altura máx. da tela com rolagem interna,
+    X maior); detalhes do paciente em 1 coluna abaixo de 640 px.
+  - Campos de texto com 16 px para o iOS não dar zoom; barra superior e rodapé respeitam a
+    safe-area.
+
 ## 0.1.1 — 30/out/2026
 ### Corrigido
 - **Rajada de consultas que derrubou o banco em 30/out (08:20–08:51).** A tela do

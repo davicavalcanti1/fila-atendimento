@@ -40,10 +40,10 @@ export function PageHeader({ eyebrow, title, subtitle, actions }: PageHeaderProp
           {title}
         </h1>
         {subtitle && (
-          <p className="text-xs text-muted-foreground leading-snug max-w-xl">{subtitle}</p>
+          <p className="text-xs text-muted-foreground leading-snug max-w-xl max-lg:break-words">{subtitle}</p>
         )}
       </div>
-      {actions && <div className="flex items-center gap-1.5 shrink-0">{actions}</div>}
+      {actions && <div className="flex items-center gap-1.5 shrink-0 max-lg:flex-wrap max-lg:shrink">{actions}</div>}
     </header>
   );
 }
