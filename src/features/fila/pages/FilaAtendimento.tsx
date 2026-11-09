@@ -5,6 +5,7 @@ import { hojeBRT } from "@/lib/dataBRT";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { backoffBanco, ehErroDeServidor } from "@/lib/backoffServidor";
 import { useAuth } from "@/shared/contexts/AuthContext";
 import { SITUACAO } from "@/services/netris/client";
 import { ArrowRight, RefreshCw, Stethoscope } from "lucide-react";
@@ -97,12 +98,17 @@ function ModalidadeCard({
       .in("modalidade_id", modalidadeIds)
       .in("situacao_id", situacaoIds)
       .is("dispensed_at", null)
-      .then(({ count: c }: { count: number | null }) => setCount(c ?? 0));
+      .then((resposta: { count: number | null; status: number; error: unknown }) => {
+        // Erro de servidor não é fila vazia: mantém o número anterior.
+        if (ehErroDeServidor(resposta)) return;
+        setCount(resposta.count ?? 0);
+      });
   }, [modalidadeIds.join(","), situacaoIds.join(",")]);
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 30_000);
+    // Banco com problema (src/lib/backoffServidor.ts): pula a volta até a espera acabar.
+    const t = setInterval(() => { if (!backoffBanco.emBackoff()) load(); }, 30_000);
     return () => clearInterval(t);
   }, [load]);
 
@@ -179,12 +185,14 @@ function FilaHub() {
     if (!tenantId || !(role === "supervisor" || role === "admin" || role === "developer")) return;
     let vivo = true;
     const ler = async () => {
-      const { data } = await (supabase as any)
+      const resposta = await (supabase as any)
         .from("fila_assistente_state")
         .select("user_id, medicos_selecionados")
         .eq("tenant_id", tenantId)
         .gte("updated_at", `${hojeBRT()}T03:00:00.000Z`);
       if (!vivo) return;
+      if (ehErroDeServidor(resposta)) return; // mantém o que já está na tela
+      const data = resposta.data;
       const m = new Map<string, number>();
       for (const st of (data as Array<{ user_id: string; medicos_selecionados: string[] }> | null) ?? []) {
         m.set(st.user_id, (m.get(st.user_id) ?? 0) + (st.medicos_selecionados?.length ?? 0));
@@ -192,7 +200,7 @@ function FilaHub() {
       setMedicosPorPessoa(m);
     };
     ler();
-    const t = setInterval(ler, 60_000);
+    const t = setInterval(() => { if (!backoffBanco.emBackoff()) ler(); }, 60_000);
     return () => { vivo = false; clearInterval(t); };
   }, [tenantId, role, tick]);
 

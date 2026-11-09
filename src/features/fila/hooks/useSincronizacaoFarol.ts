@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { backoffBanco } from "@/lib/backoffServidor";
 
 const NOME_ROTINA = "poll-farol-timestamps";
 
@@ -63,7 +64,8 @@ export function useSincronizacaoFarol(tenantId: string): Sincronizacao {
     ler();
     // A rotina roda a cada 3 min; ler a cada 1 min basta para o aviso aparecer
     // no máximo um minuto depois de cruzar o limite.
-    const t = setInterval(ler, 60_000);
+    // Banco com problema (src/lib/backoffServidor.ts): pula a volta até a espera acabar.
+    const t = setInterval(() => { if (!backoffBanco.emBackoff()) ler(); }, 60_000);
     return () => { vivo = false; clearInterval(t); };
   }, [tenantId]);
 

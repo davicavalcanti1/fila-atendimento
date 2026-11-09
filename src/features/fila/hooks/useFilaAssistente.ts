@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { logError } from "@/lib/logger";
+import { ehErroDeServidor } from "@/lib/backoffServidor";
 import { toast } from "sonner";
 import { hojeBRT } from "@/lib/dataBRT";
 import type { DropResult } from "@hello-pangea/dnd";
@@ -514,13 +515,17 @@ export function useFilaAssistente({
 
   const loadState = useCallback(async (targetUserId: string) => {
     if (!tenantId || !targetUserId) return;
-    const { data } = await (supabase as any)
+    const resposta = await (supabase as any)
       .from("fila_assistente_state")
       .select("medicos_selecionados,salas_extra,paciente_sala_map")
       .eq("tenant_id", tenantId)
       .eq("user_id", targetUserId)
       .eq("modalidade_id", modalidadeKey)
       .maybeSingle();
+    // Erro de servidor (5xx/rede/timeout) não é "sem seleção": mantém a atual
+    // em vez de limpar os médicos da tela (src/lib/backoffServidor.ts).
+    if (ehErroDeServidor(resposta)) return;
+    const data = resposta.data;
     if (data) {
       setState({
         medicos_selecionados: (data.medicos_selecionados as string[]) ?? [],
@@ -566,11 +571,14 @@ export function useFilaAssistente({
     if (!podeVerAcompanhamento) { setViewersBrutos([]); return; }
     const startOfDayBRT = `${hojeBRT()}T03:00:00.000Z`; // 00:00 BRT = 03:00 UTC
 
-    const { data: states } = await (supabase as any)
+    const respostaStates = await (supabase as any)
       .from("fila_assistente_state")
       .select("user_id, medicos_selecionados, updated_at")
       .eq("tenant_id", tenantId)
       .gte("updated_at", startOfDayBRT);
+    // Erro de servidor: mantém a divisão que já está na tela.
+    if (ehErroDeServidor(respostaStates)) return;
+    const states = respostaStates.data;
 
     // Uma linha por usuário: o estado é por modalidade, e quem trabalhou em duas
     // no mesmo dia aparecia duas vezes com listas diferentes de médicos. O
