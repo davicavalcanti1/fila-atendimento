@@ -28,6 +28,7 @@ import { classePrioridade } from "../lib/prioridade";
 import { DivisaoMedicosHoje } from "../components/DivisaoMedicosHoje";
 import { IndicadorSincronizacao, FaixaFilaDesatualizada } from "../components/IndicadorSincronizacao";
 import { agruparChamadas } from "@/lib/agruparChamadas";
+import { backoffBanco } from "@/lib/backoffServidor";
 
 export default function FilaAtendimentoAssistente() {
   const { profile, role } = useAuth();
@@ -138,8 +139,29 @@ export default function FilaAtendimentoAssistente() {
     // a rajada vira UMA recarga até 1,5 s depois do primeiro aviso.
     // O Farol só relê a Fila se a lista de pacientes mudou ("seMudou"): mudança
     // de posição/prioridade chega pelo canal da própria Fila.
-    const recargaFarol    = agruparChamadas(() => loadFarol({ overlays: "seMudou" }), 1_500);
-    const recargaOverlays = agruparChamadas(() => loadOverlays(), 1_500);
+    //
+    // Banco com problema (5xx/rede/timeout — src/lib/backoffServidor.ts): os
+    // avisos NÃO leem, só marcam `sujo`. Quando a espera acaba, a próxima
+    // tentativa relê tudo (Farol + Fila + seleção + divisão), porque avisos de
+    // qualquer canal podem ter sido pulados.
+    let sujo = false;
+    const emEspera = () => { if (backoffBanco.emBackoff()) { sujo = true; return true; } return false; };
+    const recarregarTudo = () => {
+      sujo = false;
+      loadState(targetUserId);
+      loadAssistentes();
+      return loadFarol();
+    };
+    const recargaFarol = agruparChamadas(() => {
+      if (emEspera()) return;
+      if (sujo) return recarregarTudo();
+      return loadFarol({ overlays: "seMudou" });
+    }, 1_500);
+    const recargaOverlays = agruparChamadas(() => {
+      if (emEspera()) return;
+      if (sujo) return recarregarTudo();
+      return loadOverlays();
+    }, 1_500);
     const minhasModalidades = new Set<number>(mod.modalidadeIds as readonly number[]);
 
     farolChannelRef.current = supabase
@@ -171,21 +193,26 @@ export default function FilaAtendimentoAssistente() {
         event: "*", schema: "public", table: "fila_assistente_state",
         filter: `tenant_id=eq.${tenantId}`,
       }, (payload: any) => {
+        if (emEspera()) return;
         const row = payload?.new ?? payload?.old;
         if (row?.user_id === targetUserId && row?.modalidade_id === modalidadeKey) loadState(targetUserId);
         // A divisão de médicos vem desta tabela (a presença só diz quem está
         // online). Agrupado no tempo: selecionar médicos gera um evento por
         // clique. Para quem não é coordenação, loadAssistentes sai na hora.
         if (divisaoTimer) clearTimeout(divisaoTimer);
-        divisaoTimer = setTimeout(loadAssistentes, 800);
+        divisaoTimer = setTimeout(() => { if (!emEspera()) loadAssistentes(); }, 800);
       })
       .subscribe();
 
     // Rede de segurança de 30 s (recarga completa, Farol + Fila). Aba escondida
     // não recarrega: ninguém está olhando, e as TVs/abas esquecidas abertas
     // somavam consultas o dia todo. Ao voltar a ficar visível, recarrega.
+    // Em backoff a volta é pulada até a espera acabar (a fila anterior fica na
+    // tela e a faixa "Esta tela não conseguiu atualizar" continua acesa).
     const interval = setInterval(() => {
       if (document.visibilityState === "hidden") return;
+      if (backoffBanco.emBackoff()) return;
+      if (sujo) { recarregarTudo(); return; }
       loadFarol();
     }, 30_000);
     const aoVoltar = () => { if (document.visibilityState === "visible") recargaFarol.agendar(); };
