@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { criarCarregadorDeUsuario } from "@/lib/carregarUsuarioUmaVez";
 
 // Mesmo contrato do AuthContext de origem (controleoperacional): as páginas
 // copiadas leem profile.tenant_id como string. Perfil sem tenant é o owner
@@ -34,13 +35,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
-    const [{ data: profileData }, { data: roleData }] = await Promise.all([
+    const [{ data: profileData, error: erroPerfil }, { data: roleData, error: erroPapel }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
     ]);
     setProfile((profileData as Profile) ?? ({ id: userId } as Profile));
     setRole((roleData as { role: string } | null)?.role ?? null);
+    // Falha de leitura: mantém o comportamento de antes na tela, mas avisa o
+    // carregador para NÃO guardar este resultado — a próxima chamada lê de novo.
+    if (erroPerfil || erroPapel) throw erroPerfil ?? erroPapel;
   };
+
+  // Perfil e papel não mudam durante o dia: uma leitura por pessoa, não por
+  // evento de sessão (ver src/lib/carregarUsuarioUmaVez.ts). Mesmo objeto em
+  // todos os renders — o useEffect abaixo roda uma vez só.
+  const [carregador] = useState(() => criarCarregadorDeUsuario(fetchUserData));
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -49,8 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (newSession?.user) {
         // setTimeout evita deadlock: chamadas ao Supabase dentro do callback do
         // onAuthStateChange travam enquanto o lock interno de auth está preso.
-        setTimeout(() => fetchUserData(newSession.user.id), 0);
+        setTimeout(() => { carregador.carregar(newSession.user.id).catch(() => {}); }, 0);
       } else {
+        carregador.esquecer();
         setProfile(null);
         setRole(null);
       }
@@ -59,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data: { session: existing } }) => {
       setSession(existing);
       setUser(existing?.user ?? null);
-      if (existing?.user) await fetchUserData(existing.user.id);
+      if (existing?.user) await carregador.carregar(existing.user.id).catch(() => {});
       setLoading(false);
     });
 

@@ -1,5 +1,15 @@
 # Changelog — Fila de Atendimento
 
+## 0.1.4 — 09/nov/2026
+### Desempenho
+- **O login embutido não relê perfil e papel a cada evento de sessão.** O `onAuthStateChange`
+  dispara em toda renovação de token e quando a aba volta ao foco — e como o Gestão, o Farol e a
+  Fila dividem o mesmo navegador, a renovação de uma aba dispara em todas. Cada evento relia
+  `profiles` (select *) e `user_roles`: ~1.045 leituras/h de cada (medido 09/nov). Agora é uma
+  leitura por pessoa (`src/lib/carregarUsuarioUmaVez.ts`); leitura que falha não fica guardada.
+  Troca de papel feita pelo admin vale na próxima carga do módulo.
+- Testes: `tests/carregarUsuarioUmaVez.test.ts` (5 casos).
+
 ## 0.1.3 — 09/nov/2026
 ### Corrigido
 - **Backoff quando o banco responde com erro de servidor** (item 4 do plano da queda de
